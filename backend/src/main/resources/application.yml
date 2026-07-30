@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: dvicheck-backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/dvicheck_dev
+    username: dvicheck_user
+    password: dvicheck_pass_dev
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.billwise: DEBUG
+    org.springframework.security: INFO

@@ -1,0 +1,27 @@
+.DS_Store
+.AppleDouble
+
+# Java / Spring Boot
+backend/target/
+*.class
+*.jar
+*.log
+backend/src/main/resources/application-local.yml
+
+# Node / React Native
+node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/.env
+mobile/.env.local
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# Secrets — NEVER commit these
+*.pem
+*secret*
+application-prod.yml
