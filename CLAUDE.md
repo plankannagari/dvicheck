@@ -73,6 +73,22 @@ Every endpoint returns `ResponseEntity<ApiResponse<T>>`:
 - Phone numbers validated as E.164 format (`^\\+[1-9]\\d{7,19}$`)
 - Entity → DTO mapping done in a private `toResponse()` method in the controller
 
+## Backend patterns (established Day 3)
+- Money fields always use `BigDecimal` (never `double` or `float`)
+- Dates use `LocalDate`, timestamps use `Instant` — never mix them
+- Bill type controlled by `BillType` enum (GROCERY, UTILITY, OTHER)
+- Item category controlled by `ItemCategory` enum (ESSENTIAL, REDUCIBLE, AVOIDABLE, DUPLICATE)
+- Shopping list status controlled by `ListStatus` enum (DRAFT, ACTIVE, COMPLETED)
+- `PantryMemory.normalise(name)` used whenever storing item names for matching
+- All `@OneToMany` relationships use `FetchType.LAZY` to avoid N+1 queries
+
+## Entity relationships
+```
+User → (1:many) → Bills → (1:many) → LineItems
+User → (1:many) → ShoppingLists → (1:many) → ShoppingItems
+User → (1:many) → PantryMemory
+```
+
 ## Key files
 - mobile/src/constants/index.js — colours, API URL, limits
 - mobile/src/api/apiClient.js — Axios instance with JWT interceptor
@@ -83,10 +99,11 @@ Every endpoint returns `ResponseEntity<ApiResponse<T>>`:
 - backend/src/main/java/.../exception/GlobalExceptionHandler.java — @RestControllerAdvice
 - backend/src/main/java/.../dto/ApiResponse.java — universal response wrapper
 
-## Current day
-Day 2 complete. Backend scaffold done: User entity, UserRepository, UserService, UserController,
-DvicheckException, GlobalExceptionHandler, ApiResponse<T>.
-Starting Day 3 — Bill domain (BillEntity, OCR upload endpoint, Claude AI analysis).
+## Current phase
+✅ Day 1 complete — scaffold, health endpoint, Expo running
+✅ Day 2 complete — DvicheckException, GlobalExceptionHandler, ApiResponse, User entity/repo/service
+✅ Day 3 complete — Full DB schema V2, all JPA entities created
+🔄 Day 4 next — JWT auth, OTP flow, AuthController, AuthService
 
 ## Do NOT change
 - application.yml datasource section
