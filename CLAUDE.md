@@ -97,10 +97,21 @@ User → (1:many) → PantryMemory
 - Dev OTP is always `123456` — replace `AuthService` with real Supabase before production
 - JWT expiry: 1 hour access token, 30 days refresh token
 
+## Mobile patterns (established Day 5)
+- All API calls go through `src/api/apiClient.js` (axios with JWT interceptor)
+- Auth API functions in `src/api/authApi.js`
+- Global state managed by Zustand stores in `src/store/`
+- Tokens stored securely via `expo-secure-store`
+- Navigation: `NavigationContainer` → `Stack.Navigator` in `App.js`
+- Screen files in `src/screens/`
+- Constants (COLORS, API_BASE_URL) in `src/constants/index.js`
+- Use `navigation.replace()` to prevent back navigation after auth
+- `KeyboardAvoidingView` wraps all screens with text inputs
+
 ## Key files
 - mobile/src/constants/index.js — colours, API URL, limits
 - mobile/src/api/apiClient.js — Axios instance with JWT interceptor
-- mobile/src/store/useStore.js — Zustand global state
+- mobile/src/store/authStore.js — Zustand auth state (user, tokens, isAuthenticated)
 - backend/src/main/resources/application.yml — DB + app config
 - backend/src/main/resources/db/migration/ — Flyway SQL files
 - backend/src/main/java/.../exception/DvicheckException.java — base exception + factories
@@ -112,7 +123,8 @@ User → (1:many) → PantryMemory
 ✅ Day 2 complete — DvicheckException, GlobalExceptionHandler, ApiResponse, User entity/repo/service
 ✅ Day 3 complete — Full DB schema V2, all JPA entities
 ✅ Day 4 complete — JWT auth, OTP flow, AuthController, Spring Security configured
-🔄 Day 5 next — React Native auth screens (phone entry + OTP verify)
+✅ Day 5 complete — React Native auth screens, navigation stack, token storage
+🔄 Day 6 next — Core navigation shell, bottom tabs, HomeScreen dashboard
 
 ## Do NOT change
 - application.yml datasource section

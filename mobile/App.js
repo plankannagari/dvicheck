@@ -1,31 +1,26 @@
+import 'react-native-gesture-handler';
+
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, Text } from 'react-native';
+
+import MainAppScreen from './src/screens/MainAppScreen';
+import OTPVerifyScreen from './src/screens/OTPVerifyScreen';
+import PhoneEntryScreen from './src/screens/PhoneEntryScreen';
+import SplashScreen from './src/screens/SplashScreen';
+
+const Stack = createStackNavigator();
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>BillWise</Text>
-      <Text style={styles.subtitle}>Day 1 — Setup complete ✓</Text>
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Splash" component={SplashScreen} />
+        <Stack.Screen name="PhoneEntry" component={PhoneEntryScreen} />
+        <Stack.Screen name="OTPVerify" component={OTPVerifyScreen} />
+        <Stack.Screen name="MainApp" component={MainAppScreen} />
+      </Stack.Navigator>
       <StatusBar style="auto" />
-    </View>
+    </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f2ee',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '300',
-    color: '#1a1612',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#7a6e64',
-  },
-});
