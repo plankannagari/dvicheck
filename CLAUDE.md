@@ -89,6 +89,14 @@ User → (1:many) → ShoppingLists → (1:many) → ShoppingItems
 User → (1:many) → PantryMemory
 ```
 
+## Backend patterns (established Day 4)
+- Auth endpoints are at `/auth/**` (public — no JWT needed)
+- All `/api/**` routes (except `/api/health`) require a valid JWT in the `Authorization` header
+- Get current user ID in any controller: `SecurityContextHolder.getContext().getAuthentication().getPrincipal()`
+- Cast principal to `String`, then `UUID.fromString(principal)` to get userId
+- Dev OTP is always `123456` — replace `AuthService` with real Supabase before production
+- JWT expiry: 1 hour access token, 30 days refresh token
+
 ## Key files
 - mobile/src/constants/index.js — colours, API URL, limits
 - mobile/src/api/apiClient.js — Axios instance with JWT interceptor
@@ -102,8 +110,9 @@ User → (1:many) → PantryMemory
 ## Current phase
 ✅ Day 1 complete — scaffold, health endpoint, Expo running
 ✅ Day 2 complete — DvicheckException, GlobalExceptionHandler, ApiResponse, User entity/repo/service
-✅ Day 3 complete — Full DB schema V2, all JPA entities created
-🔄 Day 4 next — JWT auth, OTP flow, AuthController, AuthService
+✅ Day 3 complete — Full DB schema V2, all JPA entities
+✅ Day 4 complete — JWT auth, OTP flow, AuthController, Spring Security configured
+🔄 Day 5 next — React Native auth screens (phone entry + OTP verify)
 
 ## Do NOT change
 - application.yml datasource section

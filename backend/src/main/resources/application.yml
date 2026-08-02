@@ -29,3 +29,15 @@ logging:
   level:
     com.billwise: DEBUG
     org.springframework.security: INFO
+
+dvicheck:
+  jwt:
+    # TODO: override via JWT_SECRET env var in every real environment — this dev default must never reach prod
+    secret: ${JWT_SECRET:dev-only-jwt-secret-change-me-please-32-bytes-min}
+    expiration-ms: 3600000 # 1 hour
+    refresh-expiration-ms: 2592000000 # 30 days
+  supabase:
+    url: ${SUPABASE_URL:https://dvicheck.supabase.co}
+    # Dev-only placeholder — SupabaseAuthClient is unused while AuthService runs in dev-OTP-stub mode.
+    # Override via env var with a real key before wiring real Supabase calls back in.
+    anon-key: ${SUPABASE_ANON_KEY:placeholder-key}
