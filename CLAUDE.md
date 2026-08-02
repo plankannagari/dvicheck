@@ -108,6 +108,15 @@ User → (1:many) → PantryMemory
 - Use `navigation.replace()` to prevent back navigation after auth
 - `KeyboardAvoidingView` wraps all screens with text inputs
 
+## Mobile patterns (established Day 6)
+- Bottom tab navigator in `src/navigation/MainTabNavigator.js`
+- Tab screens: Home, Scan, Lists, Insights, History
+- Reusable components in `src/components/` (Toast, ErrorBoundary)
+- Custom hooks in `src/hooks/` (useToast)
+- Mock data in screens until API wired — label clearly as `MOCK_DATA`
+- `ScrollView` with `SafeAreaView` on all full-page screens
+- `navigation.navigate('Scan')` to jump to a specific tab from any screen
+
 ## Key files
 - mobile/src/constants/index.js — colours, API URL, limits
 - mobile/src/api/apiClient.js — Axios instance with JWT interceptor
@@ -124,7 +133,8 @@ User → (1:many) → PantryMemory
 ✅ Day 3 complete — Full DB schema V2, all JPA entities
 ✅ Day 4 complete — JWT auth, OTP flow, AuthController, Spring Security configured
 ✅ Day 5 complete — React Native auth screens, navigation stack, token storage
-🔄 Day 6 next — Core navigation shell, bottom tabs, HomeScreen dashboard
+✅ Day 6 complete — Bottom tab navigator, HomeScreen dashboard, Toast, ErrorBoundary
+🔄 Day 7 next — Wire HomeScreen to real backend API (bills endpoint, spending summary)
 
 ## Do NOT change
 - application.yml datasource section
