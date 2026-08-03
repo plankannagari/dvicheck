@@ -1,0 +1,29 @@
+package com.dvicheck.backend.repository;
+
+import com.dvicheck.backend.model.Bill;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
+@Repository
+public interface BillRepository extends JpaRepository<Bill, UUID> {
+
+    @Query("SELECT COUNT(b) FROM Bill b WHERE b.user.id = :userId AND b.purchaseDate >= :fromDate")
+    long countBillsSince(@Param("userId") UUID userId, @Param("fromDate") LocalDate fromDate);
+
+    @Query("SELECT COALESCE(SUM(b.totalAmount), 0) FROM Bill b WHERE b.user.id = :userId AND b.purchaseDate >= :fromDate")
+    BigDecimal sumTotalSince(@Param("userId") UUID userId, @Param("fromDate") LocalDate fromDate);
+
+    @Query("SELECT COALESCE(SUM(b.avoidableAmount), 0) FROM Bill b WHERE b.user.id = :userId AND b.purchaseDate >= :fromDate")
+    BigDecimal sumAvoidableSince(@Param("userId") UUID userId, @Param("fromDate") LocalDate fromDate);
+
+    @Query("SELECT b FROM Bill b WHERE b.user.id = :userId ORDER BY b.purchaseDate DESC, b.createdAt DESC")
+    List<Bill> findRecentByUserId(@Param("userId") UUID userId, Pageable pageable);
+}

@@ -117,6 +117,17 @@ User → (1:many) → PantryMemory
 - `ScrollView` with `SafeAreaView` on all full-page screens
 - `navigation.navigate('Scan')` to jump to a specific tab from any screen
 
+## Backend patterns (established Day 7)
+- `HomeController` pattern: get userId via a private `currentUserId()` helper reading `SecurityContextHolder`
+- All dashboard endpoints live under `/api/home/**`
+
+## Mobile patterns (established Day 7)
+- Zustand stores: a `loadX()` action fetches data, `isLoading`/`error` state managed inside the store
+- Use `Promise.all` for parallel fetches when a screen needs multiple endpoints
+- Show loading skeletons when `isLoading && data === null` (first load only)
+- Tie `RefreshControl.refreshing` to `isLoading`
+- Always provide empty states — never blank screens
+
 ## Key files
 - mobile/src/constants/index.js — colours, API URL, limits
 - mobile/src/api/apiClient.js — Axios instance with JWT interceptor
@@ -134,7 +145,8 @@ User → (1:many) → PantryMemory
 ✅ Day 4 complete — JWT auth, OTP flow, AuthController, Spring Security configured
 ✅ Day 5 complete — React Native auth screens, navigation stack, token storage
 ✅ Day 6 complete — Bottom tab navigator, HomeScreen dashboard, Toast, ErrorBoundary
-🔄 Day 7 next — Wire HomeScreen to real backend API (bills endpoint, spending summary)
+✅ Day 7 complete — HomeScreen wired to real API, BillService, HomeController, homeStore
+🔄 Day 8 next — Camera integration, OCR receipt scanning, ScanScreen
 
 ## Do NOT change
 - application.yml datasource section
