@@ -8,7 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { COLORS } from '../constants';
 import { uploadReceiptImage } from '../api/scanApi';
-import useToast from '../hooks/useToast';
+import useToastStore from '../store/toastStore';
 import Toast from '../components/Toast';
 
 const CATEGORY_ORDER = ['ESSENTIAL', 'REDUCIBLE', 'AVOIDABLE', 'DUPLICATE'];
@@ -39,7 +39,9 @@ export default function ScanScreen({ navigation }) {
   const [scanResult, setScanResult] = useState(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [progress, setProgress] = useState(0);
-  const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast();
+  const {
+    visible: toastVisible, message: toastMessage, type: toastType, showToast, hideToast,
+  } = useToastStore();
 
   useEffect(() => {
     if (phase !== 'processing') return;

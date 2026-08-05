@@ -5,7 +5,7 @@ export const API_BASE_URL = __DEV__
   ? 'http://192.168.1.220:8080/api'
   : 'https://your-production-url.railway.app/api';
 
-export const APP_NAME = 'Dvicheck';
+export const APP_NAME = 'dvicheck';
 export const APP_VERSION = '0.1.0';
 export const FREE_SCAN_LIMIT = 10;
 

@@ -112,7 +112,7 @@ User → (1:many) → PantryMemory
 - Bottom tab navigator in `src/navigation/MainTabNavigator.js`
 - Tab screens: Home, Scan, Lists, Insights, History
 - Reusable components in `src/components/` (Toast, ErrorBoundary)
-- Custom hooks in `src/hooks/` (useToast)
+- Custom hooks live in `src/hooks/` — currently empty; toast state moved to `useToastStore` (Zustand) on Day 9
 - Mock data in screens until API wired — label clearly as `MOCK_DATA`
 - `ScrollView` with `SafeAreaView` on all full-page screens
 - `navigation.navigate('Scan')` to jump to a specific tab from any screen
@@ -129,16 +129,29 @@ User → (1:many) → PantryMemory
 - Always provide empty states — never blank screens
 
 ## Backend patterns (established Day 8)
-- `OcrService` calls Google Vision `images:annotate` (TEXT_DETECTION) via `RestClient`, same pattern as `SupabaseAuthClient`
-- Vision API key: `dvicheck.google.vision.api-key`, sourced from `GOOGLE_VISION_API_KEY` env var — never hardcoded in `application.yml`
-- `ReceiptParser` is pure regex/heuristic parsing (store name, date, total, line items, BillType inference) — no AI call yet, all parsed `LineItem`s default to `ESSENTIAL`
+- `BillScanController`: `POST /api/bills/scan` accepts `multipart/form-data` (image file + optional `storeName`/`billType`/`purchaseDate`), persists the `Bill` + `LineItem`s directly (no separate confirm/edit step)
+- `OcrService` calls the Vision REST API via Spring's `RestClient` — this resolves to the JDK's built-in `HttpClient` under the hood (Spring's `RestClient` auto-detection only checks Apache HttpComponents → Jetty → JDK, never OkHttp) — the `okhttp` dependency in `pom.xml` is currently unused
+- Vision API key: `dvicheck.google.vision.api-key`, sourced from `GOOGLE_VISION_API_KEY` env var — never hardcoded in `application.yml`; in production, set it as a Railway env var
+- `ReceiptParser` is pure regex/heuristic parsing (store name, date, total, line items, BillType inference) — a placeholder until an AI parsing engine replaces/augments it on Day 15; all parsed `LineItem`s default to `ESSENTIAL`
 - New `DvicheckException.serviceUnavailable()` factory → `SERVICE_UNAVAILABLE` errorCode → HTTP 503, for upstream OCR failures (distinct from `badRequest` for unreadable images)
-- `POST /api/bills/scan` persists the `Bill` + `LineItem`s directly (no separate confirm/edit step yet)
 
 ## Mobile patterns (established Day 8)
 - Camera: `CameraView` + `useCameraPermissions` from `expo-camera` (config plugin in `app.json`, not the legacy `Camera` component)
-- `ScanScreen` phases driven by `scanStore.phase` (`camera` / `processing` / `result` / `error`), not local screen state
-- `scanStore.scanReceipt(base64)` follows the `loadX()` store pattern from Day 7 — sets phase, calls the API, catches into an `error` phase with a user-facing message
+- `ScanScreen` phases (`camera` / `processing` / `result`) are local component state — there is no `scanStore`
+- `scanApi.uploadReceiptImage(uri, options)` compresses the photo to 1200px wide / 80% JPEG via `expo-image-manipulator`, then uploads as `multipart/form-data`
+- Toasts on `ScanScreen` come from the shared `useToastStore` (Zustand) — there is no `hooks/useToast.js`
+
+## Backend patterns (established Day 9)
+- Shopping endpoints at `/api/shopping/lists/**` (`ShoppingListController` / `ShoppingListService`)
+- Duplicate detection: normalise the item name via `PantryMemory.normalise()`, look up in `pantry_memory` via `PantryMemoryRepository.findByUserIdAndNormalisedName`, flag as a duplicate if `last_bought_date` is within the last 10 days (inclusive)
+- `ShoppingListService.checkForDuplicate()` returns a private `DuplicateCheckResult` record (`isDuplicate`, `warning`, `lastPurchasedDate`)
+- `pantry_recent_purchases` DB view (`V4__add_pantry_view.sql`) precomputes a HIGH/MEDIUM/LOW `duplicate_risk` tier for future risk-level queries — not currently queried by `ShoppingListService` itself
+- `toggleItem`/`deleteItem`/`addItem` all verify the list belongs to the requesting user (`findByIdAndUserId`) before touching an item — never trust a matching `listId`/`itemId` pair alone
+
+## Mobile patterns (established Day 9)
+- `shoppingStore.addItem()` returns the newly created item — screens check `item.isDuplicate` on the return value to decide whether to show a toast, rather than the store surfacing it itself
+- `ListsScreen` uses conditional rendering keyed off `activeList` (index vs. detail mode) in a single screen — no navigation push for list detail
+- Long press on a shopping item row reveals an inline "Delete" button for that row (no `Alert.alert()` confirmation)
 
 ## Key files
 - mobile/src/constants/index.js — colours, API URL, limits
@@ -158,8 +171,9 @@ User → (1:many) → PantryMemory
 ✅ Day 5 complete — React Native auth screens, navigation stack, token storage
 ✅ Day 6 complete — Bottom tab navigator, HomeScreen dashboard, Toast, ErrorBoundary
 ✅ Day 7 complete — HomeScreen wired to real API, BillService, HomeController, homeStore
-✅ Day 8 complete — Camera integration, OcrService (Google Vision), ReceiptParser, POST /api/bills/scan, ScanScreen (camera/processing/result)
-🔄 Day 9 next
+✅ Day 8 complete — Camera UI, Google Vision OCR, ReceiptParser, BillScanController, ScanScreen
+✅ Day 9 complete — Shopping lists backend + mobile UI, duplicate detection via pantry memory
+🔄 Day 10 next — Pantry memory auto-update from scanned bills, PantryService
 
 ## Do NOT change
 - application.yml datasource section
