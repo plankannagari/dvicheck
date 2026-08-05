@@ -128,6 +128,18 @@ User → (1:many) → PantryMemory
 - Tie `RefreshControl.refreshing` to `isLoading`
 - Always provide empty states — never blank screens
 
+## Backend patterns (established Day 8)
+- `OcrService` calls Google Vision `images:annotate` (TEXT_DETECTION) via `RestClient`, same pattern as `SupabaseAuthClient`
+- Vision API key: `dvicheck.google.vision.api-key`, sourced from `GOOGLE_VISION_API_KEY` env var — never hardcoded in `application.yml`
+- `ReceiptParser` is pure regex/heuristic parsing (store name, date, total, line items, BillType inference) — no AI call yet, all parsed `LineItem`s default to `ESSENTIAL`
+- New `DvicheckException.serviceUnavailable()` factory → `SERVICE_UNAVAILABLE` errorCode → HTTP 503, for upstream OCR failures (distinct from `badRequest` for unreadable images)
+- `POST /api/bills/scan` persists the `Bill` + `LineItem`s directly (no separate confirm/edit step yet)
+
+## Mobile patterns (established Day 8)
+- Camera: `CameraView` + `useCameraPermissions` from `expo-camera` (config plugin in `app.json`, not the legacy `Camera` component)
+- `ScanScreen` phases driven by `scanStore.phase` (`camera` / `processing` / `result` / `error`), not local screen state
+- `scanStore.scanReceipt(base64)` follows the `loadX()` store pattern from Day 7 — sets phase, calls the API, catches into an `error` phase with a user-facing message
+
 ## Key files
 - mobile/src/constants/index.js — colours, API URL, limits
 - mobile/src/api/apiClient.js — Axios instance with JWT interceptor
@@ -146,7 +158,8 @@ User → (1:many) → PantryMemory
 ✅ Day 5 complete — React Native auth screens, navigation stack, token storage
 ✅ Day 6 complete — Bottom tab navigator, HomeScreen dashboard, Toast, ErrorBoundary
 ✅ Day 7 complete — HomeScreen wired to real API, BillService, HomeController, homeStore
-🔄 Day 8 next — Camera integration, OCR receipt scanning, ScanScreen
+✅ Day 8 complete — Camera integration, OcrService (Google Vision), ReceiptParser, POST /api/bills/scan, ScanScreen (camera/processing/result)
+🔄 Day 9 next
 
 ## Do NOT change
 - application.yml datasource section

@@ -24,4 +24,8 @@ public class DvicheckException extends RuntimeException {
     public static DvicheckException badRequest(String msg) {
         return new DvicheckException("BAD_REQUEST", msg);
     }
+
+    public static DvicheckException serviceUnavailable(String msg) {
+        return new DvicheckException("SERVICE_UNAVAILABLE", msg);
+    }
 }

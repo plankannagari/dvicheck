@@ -19,9 +19,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DvicheckException.class)
     public ResponseEntity<ApiResponse<Void>> handleDvicheckException(DvicheckException ex) {
         HttpStatus status = switch (ex.getErrorCode()) {
-            case "NOT_FOUND"     -> HttpStatus.NOT_FOUND;
-            case "UNAUTHORIZED"  -> HttpStatus.UNAUTHORIZED;
-            default              -> HttpStatus.BAD_REQUEST;
+            case "NOT_FOUND"           -> HttpStatus.NOT_FOUND;
+            case "UNAUTHORIZED"        -> HttpStatus.UNAUTHORIZED;
+            case "SERVICE_UNAVAILABLE" -> HttpStatus.SERVICE_UNAVAILABLE;
+            default                    -> HttpStatus.BAD_REQUEST;
         };
         return ResponseEntity.status(status).body(ApiResponse.error(ex.getMessage()));
     }

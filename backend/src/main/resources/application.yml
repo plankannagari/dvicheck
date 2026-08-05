@@ -27,7 +27,7 @@ server:
 
 logging:
   level:
-    com.billwise: DEBUG
+    com.dvicheck: DEBUG
     org.springframework.security: INFO
 
 dvicheck:
@@ -41,3 +41,7 @@ dvicheck:
     # Dev-only placeholder — SupabaseAuthClient is unused while AuthService runs in dev-OTP-stub mode.
     # Override via env var with a real key before wiring real Supabase calls back in.
     anon-key: ${SUPABASE_ANON_KEY:placeholder-key}
+  google:
+    vision:
+      # Real key lives in GOOGLE_VISION_API_KEY (local shell env / Railway env var) — never commit it here.
+      api-key: ${GOOGLE_VISION_API_KEY:}
