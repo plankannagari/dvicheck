@@ -10,6 +10,7 @@ import com.dvicheck.backend.model.LineItem;
 import com.dvicheck.backend.model.User;
 import com.dvicheck.backend.repository.BillRepository;
 import com.dvicheck.backend.service.OcrService;
+import com.dvicheck.backend.service.PantryService;
 import com.dvicheck.backend.service.ReceiptParser;
 import com.dvicheck.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,7 @@ BillScanController {
     private final ReceiptParser receiptParser;
     private final BillRepository billRepository;
     private final UserService userService;
+    private final PantryService pantryService;
 
     private UUID currentUserId() {
         String principal = SecurityContextHolder.getContext()
@@ -92,6 +94,7 @@ BillScanController {
         }
 
         Bill saved = billRepository.save(bill);
+        pantryService.updateFromBill(currentUserId(), saved);
         return ResponseEntity.ok(ApiResponse.ok(toResponse(saved)));
     }
 

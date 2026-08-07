@@ -9,6 +9,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { COLORS } from '../constants';
 import { uploadReceiptImage } from '../api/scanApi';
 import useToastStore from '../store/toastStore';
+import useHomeStore from '../store/homeStore';
+import useHistoryStore from '../store/historyStore';
 import Toast from '../components/Toast';
 
 const CATEGORY_ORDER = ['ESSENTIAL', 'REDUCIBLE', 'AVOIDABLE', 'DUPLICATE'];
@@ -42,6 +44,8 @@ export default function ScanScreen({ navigation }) {
   const {
     visible: toastVisible, message: toastMessage, type: toastType, showToast, hideToast,
   } = useToastStore();
+  const { loadDashboard } = useHomeStore();
+  const { loadBills } = useHistoryStore();
 
   useEffect(() => {
     if (phase !== 'processing') return;
@@ -183,7 +187,12 @@ export default function ScanScreen({ navigation }) {
 
           <TouchableOpacity
             style={styles.primaryBtn}
-            onPress={() => { reset(); navigation.navigate('History'); }}
+            onPress={() => {
+              loadDashboard();
+              loadBills(true);
+              reset();
+              navigation.navigate('History');
+            }}
             activeOpacity={0.8}
           >
             <Text style={styles.primaryBtnText}>Save and Done</Text>
