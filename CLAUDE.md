@@ -153,6 +153,42 @@ User → (1:many) → PantryMemory
 - `ListsScreen` uses conditional rendering keyed off `activeList` (index vs. detail mode) in a single screen — no navigation push for list detail
 - Long press on a shopping item row reveals an inline "Delete" button for that row (no `Alert.alert()` confirmation)
 
+## Backend patterns (established Day 10)
+- `PantryService.updateFromBill()` is called after every scan (from `BillScanController`, right after `billRepository.save()`) — the whole method is wrapped in one try/catch logged at `WARN`, so a pantry-update failure can never block or roll back the bill save
+- Pantry memory tracks purchase frequency (`purchaseCount`, `lastBoughtDate`) per normalised item name, but `estimatedRemainingDays` is currently a flat `DEFAULT_ESTIMATED_REMAINING_DAYS = 7` placeholder constant — not yet a computed heuristic
+- Bill history: `BillHistoryController` — `GET /api/bills` (paginated via `page`/`size`, reuses `RecentBillDto`) and `GET /api/bills/{id}` (full `BillDetailResponse` with line items), both scoped to the requesting user; coexists with `BillScanController` on the same `/api/bills` base path without route conflicts (`POST /scan` vs. `GET /` / `GET /{id}`)
+- `GlobalExceptionHandler` also maps `MissingServletRequestPartException` → 400 (previously fell through to the generic 500 handler)
+
+## Mobile patterns (established Day 10)
+- `HistoryScreen` uses the same index/detail conditional-render pattern as `ListsScreen` (keyed off `activeBill`, no navigation push)
+- `historyStore` paginates via `page`/`hasMore`; `loadBills(refresh)` resets to page 0 when `refresh` is true, otherwise appends
+- After a successful scan save, `ScanScreen`'s "Save and Done" fires `loadDashboard()` and `loadBills(true)` (fire-and-forget, no `await`) before navigating, so `HomeScreen` and `HistoryScreen` both show fresh data immediately
+
+## End-to-end flow (as of Day 10)
+```
+Scan receipt → OCR → Parse → Save Bill → Update Pantry Memory
+  → Duplicate detection available for shopping lists
+  → History screen shows the bill
+  → Home screen stats refresh
+```
+
+## Backend patterns (established Day 11)
+- Insights endpoint: `GET /api/insights/weekly` (`InsightsController` / `InsightsService`)
+- `InsightsService` aggregates current week vs. previous week (Monday-to-today vs. the prior full Monday–Sunday)
+- `sumTotalBetween` query added to `BillRepository`
+- `LineItemRepository.findByBillUserIdAndBillPurchaseDateBetween` for item-level queries
+
+## Mobile patterns (established Day 11)
+- Manual item entry in `ScanScreen`'s result phase: local state `manualItems[]` only — TODO Day 15 to persist to backend via a PATCH endpoint
+- `vsLastWeekPercent`: negative = spending down (green), positive = up (red)
+
+## Phase 2 status
+- Core loop: COMPLETE (scan → save → history → home refresh)
+- Shopping lists: COMPLETE (create, add items, duplicate detection)
+- Weekly insights: COMPLETE (real data, category breakdown)
+- AI suggestions: PENDING Day 15
+- Manual receipt entry: PARTIAL (display only — backend persistence Day 15)
+
 ## Key files
 - mobile/src/constants/index.js — colours, API URL, limits
 - mobile/src/api/apiClient.js — Axios instance with JWT interceptor
@@ -173,7 +209,9 @@ User → (1:many) → PantryMemory
 ✅ Day 7 complete — HomeScreen wired to real API, BillService, HomeController, homeStore
 ✅ Day 8 complete — Camera UI, Google Vision OCR, ReceiptParser, BillScanController, ScanScreen
 ✅ Day 9 complete — Shopping lists backend + mobile UI, duplicate detection via pantry memory
-🔄 Day 10 next — Pantry memory auto-update from scanned bills, PantryService
+✅ Day 10 complete — PantryService auto-update, BillHistoryController, HistoryScreen, scan save refreshes HomeScreen
+✅ Day 11 complete — InsightsService, InsightsScreen wired to real data, manual item entry on scan result
+🔄 Day 12 next — Profile screen, settings, household size, currency preferences
 
 ## Do NOT change
 - application.yml datasource section

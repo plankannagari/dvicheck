@@ -1,26 +1,248 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import {
+  View, Text, StyleSheet, SafeAreaView, StatusBar,
+  ScrollView, RefreshControl,
+} from 'react-native';
 
 import { COLORS } from '../constants';
+import useInsightsStore from '../store/insightsStore';
+
+const CATEGORY_ORDER = ['ESSENTIAL', 'REDUCIBLE', 'AVOIDABLE', 'DUPLICATE'];
+const CATEGORY_META = {
+  ESSENTIAL: { label: 'Essential', bar: COLORS.green },
+  REDUCIBLE: { label: 'Reducible', bar: COLORS.amber },
+  AVOIDABLE: { label: 'Avoidable', bar: COLORS.red },
+  DUPLICATE: { label: 'Duplicate', bar: COLORS.blue },
+};
+
+const fmt = (n) => '$' + Number(n ?? 0).toFixed(2);
+const fmtPct = (n) => (Number(n ?? 0) >= 0 ? '+' : '') + Number(n ?? 0).toFixed(1) + '%';
+const fmtDateRange = (start, end) => {
+  if (!start || !end) return '';
+  const opts = { weekday: 'short', month: 'short', day: 'numeric' };
+  const s = new Date(start).toLocaleDateString('en-US', opts);
+  const e = new Date(end).toLocaleDateString('en-US', opts);
+  return `${s} — ${e}`;
+};
+
+function SkeletonBox({ height = 20, width = '100%', style }) {
+  return <View style={[{ height, width, borderRadius: 12, backgroundColor: COLORS.border }, style]} />;
+}
 
 export default function InsightsScreen() {
+  const { insights, isLoading, error, loadInsights } = useInsightsStore();
+
+  useEffect(() => { loadInsights(); }, []);
+
+  const isFirstLoad = isLoading && insights === null;
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.emoji}>📊</Text>
-      <Text style={styles.heading}>Weekly Insights</Text>
-      <Text style={styles.subtext}>Coming in Day 10</Text>
-    </View>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
+
+      <View style={styles.header}>
+        <Text style={styles.heading}>Weekly Insights</Text>
+        {insights && (
+          <Text style={styles.dateRange}>{fmtDateRange(insights.weekStart, insights.weekEnd)}</Text>
+        )}
+      </View>
+
+      {error ? (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : null}
+
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isLoading} onRefresh={loadInsights} tintColor={COLORS.accent} />
+        }
+      >
+        {isFirstLoad ? (
+          <View style={{ gap: 16 }}>
+            <SkeletonBox height={140} />
+            <SkeletonBox height={100} />
+            <SkeletonBox height={160} />
+          </View>
+        ) : !insights ? null : Number(insights.totalSpent) === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyIcon}>🧾</Text>
+            <Text style={styles.emptyText}>Scan receipts this week to see your insights</Text>
+          </View>
+        ) : (
+          <>
+            {/* Hero metrics row */}
+            <View style={styles.heroRow}>
+              <View style={styles.heroCard}>
+                <Text style={styles.heroLabel}>TOTAL THIS WEEK</Text>
+                <Text style={styles.heroAmount}>{fmt(insights.totalSpent)}</Text>
+                <Text
+                  style={[
+                    styles.heroSub,
+                    { color: insights.vsLastWeekPercent > 0 ? COLORS.red : COLORS.green },
+                  ]}
+                >
+                  {fmtPct(insights.vsLastWeekPercent)} vs last week
+                </Text>
+              </View>
+
+              <View style={styles.heroSideColumn}>
+                <View style={[styles.sideCard, { backgroundColor: COLORS.redLight }]}>
+                  <Text style={[styles.sideValue, { color: COLORS.red }]}>{fmt(insights.avoidableSpend)}</Text>
+                  <Text style={[styles.sideLabel, { color: COLORS.red }]}>Avoidable</Text>
+                </View>
+                <View style={[styles.sideCard, { backgroundColor: COLORS.greenLight }]}>
+                  <Text style={[styles.sideValue, { color: COLORS.green }]}>{insights.billsScanned}</Text>
+                  <Text style={[styles.sideLabel, { color: COLORS.green }]}>Bills scanned</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Spend breakdown bars */}
+            <Text style={styles.sectionLabel}>Spend by category</Text>
+            <View style={styles.breakdownCard}>
+              {(() => {
+                const categorySum = CATEGORY_ORDER.reduce(
+                  (sum, cat) => sum + Number(insights.spendByCategory?.[cat] ?? 0), 0
+                );
+                const visibleCategories = CATEGORY_ORDER.filter(
+                  (cat) => Number(insights.spendByCategory?.[cat] ?? 0) > 0
+                );
+                if (visibleCategories.length === 0) {
+                  return <Text style={styles.emptySub}>No categorised spend yet</Text>;
+                }
+                return visibleCategories.map((cat) => {
+                  const meta = CATEGORY_META[cat];
+                  const amount = Number(insights.spendByCategory[cat]);
+                  const pct = categorySum > 0 ? (amount / categorySum) * 100 : 0;
+                  return (
+                    <View key={cat} style={styles.barRow}>
+                      <View style={styles.barHeader}>
+                        <Text style={styles.barLabel}>{meta.label}</Text>
+                        <Text style={styles.barAmount}>{fmt(amount)}</Text>
+                      </View>
+                      <View style={styles.barTrack}>
+                        <View style={[styles.barFill, { width: `${pct}%`, backgroundColor: meta.bar }]} />
+                      </View>
+                    </View>
+                  );
+                });
+              })()}
+            </View>
+
+            {/* Pattern insight card */}
+            <View style={styles.patternCard}>
+              <Text style={styles.patternEmoji}>💡</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.patternText}>{insights.pattern}</Text>
+                <Text style={styles.patternSub}>Based on this week vs last week</Text>
+              </View>
+            </View>
+
+            {/* Top items */}
+            <Text style={styles.sectionLabel}>Top items this week</Text>
+            <View style={styles.itemsCard}>
+              {!insights.topItems || insights.topItems.length === 0 ? (
+                <Text style={styles.emptySub}>No items recorded this week</Text>
+              ) : (
+                insights.topItems.slice(0, 5).map((item, i) => {
+                  const meta = CATEGORY_META[item.category] || CATEGORY_META.ESSENTIAL;
+                  return (
+                    <View
+                      key={`${item.name}-${i}`}
+                      style={[styles.itemRow, i < insights.topItems.length - 1 && styles.itemBorder]}
+                    >
+                      <View style={[styles.itemDot, { backgroundColor: meta.bar }]} />
+                      <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+                      <Text style={styles.itemPrice}>{fmt(item.totalPrice)}</Text>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          </>
+        )}
+
+        <View style={{ height: 20 }} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.bg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 28,
+  safeArea: { flex: 1, backgroundColor: COLORS.bg },
+  scroll: { flex: 1 },
+  scrollContent: { padding: 16, paddingBottom: 20 },
+
+  header: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 8 },
+  heading: { fontSize: 22, color: COLORS.ink, fontWeight: '600' },
+  dateRange: { fontSize: 12, color: COLORS.inkLight, marginTop: 4 },
+
+  errorBanner: {
+    backgroundColor: COLORS.redLight, padding: 10, marginHorizontal: 16,
+    borderRadius: 10, marginBottom: 4,
   },
-  emoji: { fontSize: 48, marginBottom: 16 },
-  heading: { fontSize: 22, color: COLORS.ink, fontWeight: '600', marginBottom: 6 },
-  subtext: { fontSize: 13, color: COLORS.inkLight, textAlign: 'center' },
+  errorText: { fontSize: 12, color: COLORS.red },
+
+  emptyCard: {
+    backgroundColor: COLORS.card, borderRadius: 16, padding: 40,
+    alignItems: 'center', borderWidth: 1, borderColor: COLORS.border, marginTop: 12,
+  },
+  emptyIcon: { fontSize: 40, marginBottom: 12 },
+  emptyText: { fontSize: 14, color: COLORS.inkLight, textAlign: 'center' },
+  emptySub: { fontSize: 13, color: COLORS.inkLight, padding: 4 },
+
+  heroRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  heroCard: {
+    flex: 1.4, backgroundColor: COLORS.ink, borderRadius: 20, padding: 18,
+    justifyContent: 'center',
+  },
+  heroLabel: { fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, marginBottom: 8 },
+  heroAmount: { fontSize: 30, color: COLORS.accent, fontWeight: '300', letterSpacing: -1, marginBottom: 6 },
+  heroSub: { fontSize: 12, fontWeight: '600' },
+
+  heroSideColumn: { flex: 1, gap: 10 },
+  sideCard: { flex: 1, borderRadius: 16, padding: 14, justifyContent: 'center' },
+  sideValue: { fontSize: 18, fontWeight: '700', marginBottom: 2 },
+  sideLabel: { fontSize: 10, fontWeight: '600' },
+
+  sectionLabel: {
+    fontSize: 10, color: COLORS.inkLight, letterSpacing: 2,
+    textTransform: 'uppercase', marginBottom: 10,
+  },
+
+  breakdownCard: {
+    backgroundColor: COLORS.card, borderRadius: 16, padding: 16,
+    borderWidth: 1, borderColor: COLORS.border, marginBottom: 20, gap: 14,
+  },
+  barRow: {},
+  barHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  barLabel: { fontSize: 13, color: COLORS.ink, fontWeight: '600' },
+  barAmount: { fontSize: 13, color: COLORS.inkLight },
+  barTrack: { height: 8, borderRadius: 4, backgroundColor: COLORS.bg, overflow: 'hidden' },
+  barFill: { height: '100%', borderRadius: 4 },
+
+  patternCard: {
+    flexDirection: 'row', gap: 12, backgroundColor: COLORS.amberLight,
+    borderRadius: 16, padding: 16, marginBottom: 20, alignItems: 'flex-start',
+  },
+  patternEmoji: { fontSize: 22 },
+  patternText: { fontSize: 14, color: COLORS.ink, lineHeight: 20, fontWeight: '600' },
+  patternSub: { fontSize: 11, color: COLORS.inkLight, marginTop: 4 },
+
+  itemsCard: {
+    backgroundColor: COLORS.card, borderRadius: 16, overflow: 'hidden',
+    borderWidth: 1, borderColor: COLORS.border,
+  },
+  itemRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    padding: 14, paddingHorizontal: 16,
+  },
+  itemBorder: { borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  itemDot: { width: 8, height: 8, borderRadius: 4 },
+  itemName: { flex: 1, fontSize: 13, color: COLORS.ink },
+  itemPrice: { fontSize: 13, color: COLORS.ink, fontWeight: '600' },
 });

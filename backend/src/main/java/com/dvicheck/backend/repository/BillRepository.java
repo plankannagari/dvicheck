@@ -26,4 +26,7 @@ public interface BillRepository extends JpaRepository<Bill, UUID> {
 
     @Query("SELECT b FROM Bill b WHERE b.user.id = :userId ORDER BY b.purchaseDate DESC, b.createdAt DESC")
     List<Bill> findRecentByUserId(@Param("userId") UUID userId, Pageable pageable);
+
+    @Query("SELECT COALESCE(SUM(b.totalAmount), 0) FROM Bill b WHERE b.user.id = :userId AND b.purchaseDate BETWEEN :from AND :to")
+    BigDecimal sumTotalBetween(@Param("userId") UUID userId, @Param("from") LocalDate from, @Param("to") LocalDate to);
 }

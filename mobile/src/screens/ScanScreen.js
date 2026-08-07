@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
   SafeAreaView, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -41,6 +41,9 @@ export default function ScanScreen({ navigation }) {
   const [scanResult, setScanResult] = useState(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [manualItems, setManualItems] = useState([]);
+  const [manualName, setManualName] = useState('');
+  const [manualPrice, setManualPrice] = useState('');
   const {
     visible: toastVisible, message: toastMessage, type: toastType, showToast, hideToast,
   } = useToastStore();
@@ -112,7 +115,27 @@ export default function ScanScreen({ navigation }) {
 
   const reset = () => {
     setScanResult(null);
+    setManualItems([]);
     setPhase('camera');
+  };
+
+  const addManualItem = () => {
+    const name = manualName.trim();
+    const price = parseFloat(manualPrice);
+    if (!name || isNaN(price) || price <= 0) {
+      showToast('Enter an item name and a valid price.', 'error');
+      return;
+    }
+    const newItem = {
+      name,
+      totalPrice: price,
+      unitPrice: price,
+      category: 'ESSENTIAL',
+      id: Date.now().toString(),
+    };
+    setManualItems((prev) => [...prev, newItem]);
+    setManualName('');
+    setManualPrice('');
   };
 
   if (phase === 'processing') {
@@ -130,7 +153,7 @@ export default function ScanScreen({ navigation }) {
   }
 
   if (phase === 'result' && scanResult) {
-    const lineItems = scanResult.lineItems ?? [];
+    const lineItems = [...(scanResult.lineItems ?? []), ...manualItems];
     const avoidableAmount = lineItems
       .filter((item) => item.category === 'AVOIDABLE')
       .reduce((sum, item) => sum + Number(item.totalPrice ?? 0), 0);
@@ -185,9 +208,55 @@ export default function ScanScreen({ navigation }) {
             </View>
           )}
 
+          <View style={styles.manualSection}>
+            <Text style={styles.manualSectionLabel}>Add missed items</Text>
+            <View style={styles.manualInputRow}>
+              <TextInput
+                style={[styles.manualInput, styles.manualNameInput]}
+                placeholder="Item name"
+                placeholderTextColor={COLORS.inkFaint}
+                value={manualName}
+                onChangeText={setManualName}
+                returnKeyType="done"
+              />
+              <TextInput
+                style={[styles.manualInput, styles.manualPriceInput]}
+                placeholder="0.00"
+                placeholderTextColor={COLORS.inkFaint}
+                value={manualPrice}
+                onChangeText={setManualPrice}
+                keyboardType="decimal-pad"
+                returnKeyType="done"
+                onSubmitEditing={addManualItem}
+              />
+              <TouchableOpacity style={styles.manualAddBtn} onPress={addManualItem} activeOpacity={0.8}>
+                <Text style={styles.manualAddBtnText}>Add</Text>
+              </TouchableOpacity>
+            </View>
+
+            {manualItems.length > 0 && (
+              <View style={styles.itemsCard}>
+                {manualItems.map((item, i) => (
+                  <View
+                    key={item.id}
+                    style={[styles.itemRow, i < manualItems.length - 1 && styles.itemBorder]}
+                  >
+                    <View style={[styles.itemDot, { backgroundColor: CATEGORY_META.ESSENTIAL.dot }]} />
+                    <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+                    <View style={styles.manualBadge}>
+                      <Text style={styles.manualBadgeText}>manual</Text>
+                    </View>
+                    <Text style={styles.itemPrice}>{fmt(item.totalPrice)}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+
           <TouchableOpacity
             style={styles.primaryBtn}
             onPress={() => {
+              // TODO Day 15: send manualItems to backend PATCH endpoint
               loadDashboard();
               loadBills(true);
               reset();
@@ -375,4 +444,30 @@ const styles = StyleSheet.create({
   itemDot: { width: 8, height: 8, borderRadius: 4 },
   itemName: { fontSize: 13, color: COLORS.ink, flex: 1 },
   itemPrice: { fontSize: 13, color: COLORS.ink, fontWeight: '600' },
+
+  manualSection: { width: '100%', marginBottom: 16 },
+  manualSectionLabel: {
+    fontSize: 10, color: COLORS.inkLight, letterSpacing: 2,
+    textTransform: 'uppercase', marginBottom: 10,
+  },
+  manualInputRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10,
+  },
+  manualInput: {
+    backgroundColor: COLORS.card, borderRadius: 12,
+    borderWidth: 1, borderColor: COLORS.border,
+    paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: COLORS.ink,
+  },
+  manualNameInput: { flex: 1 },
+  manualPriceInput: { width: 80, textAlign: 'right' },
+  manualAddBtn: {
+    backgroundColor: COLORS.accent, borderRadius: 12,
+    paddingVertical: 11, paddingHorizontal: 16,
+  },
+  manualAddBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  manualBadge: {
+    backgroundColor: COLORS.border, borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 3, marginRight: 8,
+  },
+  manualBadgeText: { fontSize: 10, color: COLORS.inkLight, fontWeight: '600' },
 });
