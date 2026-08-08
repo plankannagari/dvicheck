@@ -1,5 +1,7 @@
 package com.dvicheck.backend.service;
 
+import com.dvicheck.backend.dto.UpdatePreferencesRequest;
+import com.dvicheck.backend.dto.UserProfileDto;
 import com.dvicheck.backend.exception.DvicheckException;
 import com.dvicheck.backend.model.User;
 import com.dvicheck.backend.repository.UserRepository;
@@ -14,6 +16,41 @@ import java.util.UUID;
 public class UserService {
 
     private final UserRepository userRepository;
+
+    @Transactional(readOnly = true)
+    public UserProfileDto getProfile(UUID userId) {
+        User user = findById(userId);
+        return toProfileDto(user);
+    }
+
+    @Transactional
+    public UserProfileDto updatePreferences(UUID userId, UpdatePreferencesRequest req) {
+        User user = findById(userId);
+
+        if (req.householdSize() != null) {
+            user.setHouseholdSize(req.householdSize());
+        }
+        if (req.currency() != null) {
+            user.setCurrency(req.currency().toUpperCase());
+        }
+        if (req.notificationsEnabled() != null) {
+            user.setNotificationsEnabled(req.notificationsEnabled());
+        }
+
+        User saved = userRepository.save(user);
+        return toProfileDto(saved);
+    }
+
+    private UserProfileDto toProfileDto(User user) {
+        return new UserProfileDto(
+            user.getId(),
+            user.getPhone(),
+            user.getHouseholdSize(),
+            user.getCurrency(),
+            user.getNotificationsEnabled(),
+            user.getCreatedAt()
+        );
+    }
 
     @Transactional
     public User findOrCreateByPhone(String phone) {

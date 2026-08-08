@@ -1,6 +1,8 @@
 package com.dvicheck.backend.controller;
 
 import com.dvicheck.backend.dto.ApiResponse;
+import com.dvicheck.backend.dto.UpdatePreferencesRequest;
+import com.dvicheck.backend.dto.UserProfileDto;
 import com.dvicheck.backend.dto.UserResponse;
 import com.dvicheck.backend.dto.UserSyncRequest;
 import com.dvicheck.backend.exception.DvicheckException;
@@ -34,6 +36,17 @@ public class UserController {
         }
         User user = userService.findById(id);
         return ResponseEntity.ok(ApiResponse.ok(toResponse(user)));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserProfileDto>> getMe() {
+        return ResponseEntity.ok(ApiResponse.ok(userService.getProfile(currentUserId())));
+    }
+
+    @PatchMapping("/me/preferences")
+    public ResponseEntity<ApiResponse<UserProfileDto>> updatePreferences(
+            @Valid @RequestBody UpdatePreferencesRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(userService.updatePreferences(currentUserId(), request)));
     }
 
     private UUID currentUserId() {

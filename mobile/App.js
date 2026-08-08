@@ -9,6 +9,7 @@ import Toast from './src/components/Toast';
 import MainTabNavigator from './src/navigation/MainTabNavigator';
 import OTPVerifyScreen from './src/screens/OTPVerifyScreen';
 import PhoneEntryScreen from './src/screens/PhoneEntryScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 import SplashScreen from './src/screens/SplashScreen';
 
 const Stack = createStackNavigator();
@@ -22,6 +23,7 @@ export default function App() {
           <Stack.Screen name="PhoneEntry" component={PhoneEntryScreen} />
           <Stack.Screen name="OTPVerify" component={OTPVerifyScreen} />
           <Stack.Screen name="MainApp" component={MainTabNavigator} />
+          <Stack.Screen name="Profile" component={ProfileScreen} />
         </Stack.Navigator>
         <Toast />
       </NavigationContainer>

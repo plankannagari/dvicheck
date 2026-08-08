@@ -30,11 +30,32 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Builder.Default
+    @Column(name = "household_size")
+    private Integer householdSize = 1;
+
+    @Builder.Default
+    @Column(length = 3)
+    private String currency = "USD";
+
+    @Builder.Default
+    @Column(name = "notifications_enabled")
+    private Boolean notificationsEnabled = true;
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();
         createdAt = now;
         updatedAt = now;
+        if (householdSize == null) {
+            householdSize = 1;
+        }
+        if (currency == null) {
+            currency = "USD";
+        }
+        if (notificationsEnabled == null) {
+            notificationsEnabled = true;
+        }
     }
 
     @PreUpdate

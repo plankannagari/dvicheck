@@ -34,7 +34,7 @@ export default function HomeScreen({ navigation }) {
           <Text style={styles.greeting}>Good morning</Text>
           <Text style={styles.phone}>{user?.phone || ''}</Text>
         </View>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
           <Text style={styles.gearIcon}>⚙️</Text>
         </TouchableOpacity>
       </View>

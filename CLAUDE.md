@@ -189,6 +189,17 @@ Scan receipt → OCR → Parse → Save Bill → Update Pantry Memory
 - AI suggestions: PENDING Day 15
 - Manual receipt entry: PARTIAL (display only — backend persistence Day 15)
 
+## Backend patterns (established Day 12)
+- User preferences: `GET /api/users/me`, `PATCH /api/users/me/preferences`
+- Partial update pattern: only non-null fields on the request are applied in `UserService.updatePreferences()` — omitted fields keep their existing value
+- `household_size` stored on the `users` table — intended for the AI engine's pantry estimates on Day 15
+- `currency` stored as a 3-letter ISO code, always uppercased server-side before saving
+
+## Mobile patterns (established Day 12)
+- `ProfileScreen` is accessed via the gear icon on `HomeScreen` — a stack push (registered as a sibling of `PhoneEntry`/`MainApp` in the root `Stack.Navigator` in `App.js`), not a tab
+- isDirty pattern: local preference state is compared against the loaded `profile` object; the header's "Save" button only renders when they differ
+- Sign out: `authStore.clearAuth()` + `profileStore.clearProfile()`, then `navigation.reset()` to the `PhoneEntry` route
+
 ## Key files
 - mobile/src/constants/index.js — colours, API URL, limits
 - mobile/src/api/apiClient.js — Axios instance with JWT interceptor
@@ -211,7 +222,8 @@ Scan receipt → OCR → Parse → Save Bill → Update Pantry Memory
 ✅ Day 9 complete — Shopping lists backend + mobile UI, duplicate detection via pantry memory
 ✅ Day 10 complete — PantryService auto-update, BillHistoryController, HistoryScreen, scan save refreshes HomeScreen
 ✅ Day 11 complete — InsightsService, InsightsScreen wired to real data, manual item entry on scan result
-🔄 Day 12 next — Profile screen, settings, household size, currency preferences
+✅ Day 12 complete — User preferences (household size, currency), ProfileScreen, gear icon navigation
+🔄 Day 13 next — Push notifications setup, weekly insights reminder scheduling
 
 ## Do NOT change
 - application.yml datasource section
