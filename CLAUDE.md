@@ -130,7 +130,7 @@ User → (1:many) → PantryMemory
 
 ## Backend patterns (established Day 8)
 - `BillScanController`: `POST /api/bills/scan` accepts `multipart/form-data` (image file + optional `storeName`/`billType`/`purchaseDate`), persists the `Bill` + `LineItem`s directly (no separate confirm/edit step)
-- `OcrService` calls the Vision REST API via Spring's `RestClient` — this resolves to the JDK's built-in `HttpClient` under the hood (Spring's `RestClient` auto-detection only checks Apache HttpComponents → Jetty → JDK, never OkHttp) — the `okhttp` dependency in `pom.xml` is currently unused
+- `OcrService` calls the Vision REST API via Spring's `RestClient` — this resolves to the JDK's built-in `HttpClient` under the hood (Spring's `RestClient` auto-detection only checks Apache HttpComponents → Jetty → JDK, never OkHttp) — the `okhttp` dependency in `pom.xml` was unused as of Day 8; `NotificationService` (Day 13) is the first thing that actually uses it directly
 - Vision API key: `dvicheck.google.vision.api-key`, sourced from `GOOGLE_VISION_API_KEY` env var — never hardcoded in `application.yml`; in production, set it as a Railway env var
 - `ReceiptParser` is pure regex/heuristic parsing (store name, date, total, line items, BillType inference) — a placeholder until an AI parsing engine replaces/augments it on Day 15; all parsed `LineItem`s default to `ESSENTIAL`
 - New `DvicheckException.serviceUnavailable()` factory → `SERVICE_UNAVAILABLE` errorCode → HTTP 503, for upstream OCR failures (distinct from `badRequest` for unreadable images)
@@ -200,6 +200,59 @@ Scan receipt → OCR → Parse → Save Bill → Update Pantry Memory
 - isDirty pattern: local preference state is compared against the loaded `profile` object; the header's "Save" button only renders when they differ
 - Sign out: `authStore.clearAuth()` + `profileStore.clearProfile()`, then `navigation.reset()` to the `PhoneEntry` route
 
+## Backend patterns (established Day 13)
+- Push token: `users.push_token` (`V6__add_push_token.sql`), `POST /api/users/me/push-token` (`PushTokenRequest` → `UserService.savePushToken()`)
+- `NotificationService.sendNotification(pushToken, title, body)` calls the Expo Push API (`https://exp.host/--/api/v2/push/send`) directly via `okhttp3.OkHttpClient` + the injected `ObjectMapper` bean — skips silently (`log.debug`) on a null/blank token, and the whole call is wrapped in try/catch logged at `WARN`, so a notification failure can never throw into calling code
+- `NotificationService.sendWeeklyInsightsReminder()` — `@Scheduled(cron = "0 0 19 * * SUN")`, queries `UserRepository.findByPushTokenIsNotNullAndNotificationsEnabledTrue()`; `@EnableScheduling` is on `BackendApplication`
+- Code review pass (Days 9-12): only one fix applied — `BillHistoryController` now has class-level `@Transactional(readOnly = true)` (it talks to `BillRepository` directly instead of through a service, so it had no transaction boundary of its own for its lazy `lineItems`/`user` access; this previously only worked because `spring.jpa.open-in-view` defaults to `true` and was never set explicitly). Remaining findings left as tech debt — see below.
+
+## Mobile patterns (established Day 13)
+- `src/utils/notifications.js` → `registerForPushToken()`: requests permission (`expo-notifications`), no-ops on simulators (`expo-device`'s `Device.isDevice` check), gets the Expo push token, POSTs it to the backend — every step is defensive (never throws, only `console.log`s)
+- `authStore.setAuth()` calls `registerForPushToken()` fire-and-forget (no `await`) right after the `SecureStore` writes complete
+- Requires `expo-notifications` + `expo-device` (`npx expo install expo-notifications expo-device`) — not yet confirmed installed as of Day 13; the app won't bundle until that's run
+
+## Day 15 — Claude API Parser (IMPORTANT CONTEXT)
+
+**Problem:** `ReceiptParser`'s heuristic fails whenever Google Vision's OCR splits an item's name and price across separate lines (confirmed real-world occurrence, not just a synthetic-image artifact — see Day 8/Day 10 notes above).
+
+**Solution:** replace/augment it with a Claude API call that understands receipt context well enough to survive that line-splitting.
+
+**Approach:**
+- Keep `ReceiptParser` as the fallback — do not delete it
+- After OCR extracts raw text, send that text to Claude (`claude-sonnet-4-20250514`, per the Tech Stack section above)
+- Prompt: extract structured line items from the receipt text
+- Claude returns a JSON array: `[{name, unitPrice, quantity, totalPrice}]`
+- Parse that JSON into `ParsedLineItem` records (the same record `ReceiptParser` already produces, so callers don't need to change)
+- If the Claude call fails, errors, or returns an empty array, fall back to `receiptParser.parse(rawOcrText).items()`
+
+**API key:**
+- `ANTHROPIC_API_KEY` environment variable (never hardcoded in `application.yml`, same convention as `GOOGLE_VISION_API_KEY`)
+- `application.yml`: `app.anthropic.api-key: ${ANTHROPIC_API_KEY:placeholder}`
+- Call `https://api.anthropic.com/v1/messages` via OkHttp (already a real dependency as of Day 13 — see `NotificationService`)
+
+**New class:** `ClaudeReceiptParser.java` in `service/`
+- `parse(String rawOcrText) -> List<ParsedLineItem>`
+- Fallback path: `receiptParser.parse(rawOcrText).items()`
+
+**Expected Claude response shape** (to instruct in the prompt):
+```json
+[
+  {"name": "Milk 2L", "quantity": 1, "unitPrice": 2.20, "totalPrice": 2.20},
+  {"name": "Bread", "quantity": 1, "unitPrice": 5.50, "totalPrice": 5.50}
+]
+```
+
+## Migrations
+- `V1`–`V6` exist (`V6` = `push_token`). Next free version is **`V7`**.
+
+## Tech debt (from Day 9-12 code review, Day 13)
+Only the `BillHistoryController` transaction issue was fixed (see Day 13 backend patterns above). Everything else below was deliberately left as-is:
+- `AddItemRequest.quantityOrDefault()` is dead code — `ShoppingListService.addItem()` re-implements the same "default to `1`" rule inline instead of calling it; the two could drift
+- `PantryMemoryRepository.findByUserIdOrderByLastBoughtDateDesc()` is declared but never called anywhere
+- `currentUserId()` is copy-pasted into 5 controllers (`ShoppingListController`, `BillHistoryController`, `InsightsController`, `UserController`, `BillScanController`) — behaviorally identical today, but drift-prone
+- `AddItemRequest.quantity` has no length/format validation, unlike `name`'s `@NotBlank` — an oversized value hits Postgres's `VARCHAR(50)` constraint as a raw 500 instead of a clean 400
+- `manualItems` in `ScanScreen`'s result phase are still local-state-only (tracked separately above, resurfaced here since it's still open)
+
 ## Key files
 - mobile/src/constants/index.js — colours, API URL, limits
 - mobile/src/api/apiClient.js — Axios instance with JWT interceptor
@@ -223,7 +276,9 @@ Scan receipt → OCR → Parse → Save Bill → Update Pantry Memory
 ✅ Day 10 complete — PantryService auto-update, BillHistoryController, HistoryScreen, scan save refreshes HomeScreen
 ✅ Day 11 complete — InsightsService, InsightsScreen wired to real data, manual item entry on scan result
 ✅ Day 12 complete — User preferences (household size, currency), ProfileScreen, gear icon navigation
-🔄 Day 13 next — Push notifications setup, weekly insights reminder scheduling
+✅ Day 13 complete — push notifications, V6 migration, code review pass
+🔄 Day 14 — buffer day (rest, catch up, test on physical device)
+🔄 Day 15 next — Replace ReceiptParser with Claude API for intelligent line item extraction
 
 ## Do NOT change
 - application.yml datasource section

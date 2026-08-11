@@ -41,6 +41,13 @@ public class UserService {
         return toProfileDto(saved);
     }
 
+    @Transactional
+    public void savePushToken(UUID userId, String token) {
+        User user = findById(userId);
+        user.setPushToken(token);
+        userRepository.save(user);
+    }
+
     private UserProfileDto toProfileDto(User user) {
         return new UserProfileDto(
             user.getId(),

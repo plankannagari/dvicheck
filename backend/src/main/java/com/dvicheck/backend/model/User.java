@@ -42,6 +42,9 @@ public class User {
     @Column(name = "notifications_enabled")
     private Boolean notificationsEnabled = true;
 
+    @Column(name = "push_token", length = 200)
+    private String pushToken;
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();

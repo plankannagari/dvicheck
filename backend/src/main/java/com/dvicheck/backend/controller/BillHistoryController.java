@@ -11,11 +11,18 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
 
+// @Transactional(readOnly = true): this controller calls BillRepository directly instead of
+// going through a service, so it has no service-layer transaction to keep the Hibernate
+// session open. Without this, bill.getLineItems() / bill.getUser() below are lazy accesses
+// outside any transaction — they only "work" today because spring.jpa.open-in-view defaults
+// to true; this makes the requirement explicit instead of relying on that implicit default.
+@Transactional(readOnly = true)
 @RestController
 @RequestMapping("/api/bills")
 @RequiredArgsConstructor

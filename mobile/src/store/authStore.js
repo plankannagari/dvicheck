@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
+import { registerForPushToken } from '../utils/notifications';
 
 const useAuthStore = create((set) => ({
   user: null,
@@ -15,6 +16,7 @@ const useAuthStore = create((set) => ({
     } catch (error) {
       console.error('Failed to save auth tokens:', error);
     }
+    registerForPushToken(); // fire and forget — no await needed
     set({
       user: { userId, phone },
       accessToken,

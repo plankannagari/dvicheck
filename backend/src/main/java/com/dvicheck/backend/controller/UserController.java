@@ -1,6 +1,7 @@
 package com.dvicheck.backend.controller;
 
 import com.dvicheck.backend.dto.ApiResponse;
+import com.dvicheck.backend.dto.PushTokenRequest;
 import com.dvicheck.backend.dto.UpdatePreferencesRequest;
 import com.dvicheck.backend.dto.UserProfileDto;
 import com.dvicheck.backend.dto.UserResponse;
@@ -47,6 +48,12 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserProfileDto>> updatePreferences(
             @Valid @RequestBody UpdatePreferencesRequest request) {
         return ResponseEntity.ok(ApiResponse.ok(userService.updatePreferences(currentUserId(), request)));
+    }
+
+    @PostMapping("/me/push-token")
+    public ResponseEntity<ApiResponse<Void>> savePushToken(@Valid @RequestBody PushTokenRequest request) {
+        userService.savePushToken(currentUserId(), request.token());
+        return ResponseEntity.ok(ApiResponse.ok("Push token registered", null));
     }
 
     private UUID currentUserId() {
