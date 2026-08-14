@@ -9,12 +9,16 @@ import com.dvicheck.backend.model.ItemCategory;
 import com.dvicheck.backend.model.LineItem;
 import com.dvicheck.backend.model.User;
 import com.dvicheck.backend.repository.BillRepository;
+import com.dvicheck.backend.service.ClaudeItemAnalyser;
+import com.dvicheck.backend.service.GeminiItemAnalyser;
+import com.dvicheck.backend.service.GeminiReceiptParser;
 import com.dvicheck.backend.service.OcrService;
 import com.dvicheck.backend.service.PantryService;
 import com.dvicheck.backend.service.ReceiptParser;
 import com.dvicheck.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -26,7 +30,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/bills")
@@ -42,9 +48,15 @@ BillScanController {
 
     private final OcrService ocrService;
     private final ReceiptParser receiptParser;
+    private final GeminiReceiptParser geminiReceiptParser;
+    private final ClaudeItemAnalyser claudeItemAnalyser;
+    private final GeminiItemAnalyser geminiItemAnalyser;
     private final BillRepository billRepository;
     private final UserService userService;
     private final PantryService pantryService;
+
+    @Value("${app.ai.use-gemini-analyser:false}")
+    private boolean useGeminiAnalyser;
 
     private UUID currentUserId() {
         String principal = SecurityContextHolder.getContext()
@@ -70,18 +82,37 @@ BillScanController {
         }
 
         String rawText = ocrService.extractText(bytes);
+        // Use heuristic parser for store name and total (fast, no API cost)
         ReceiptParser.ParsedReceipt parsed = receiptParser.parse(rawText);
+        // Use Gemini API for line items (handles multi-line OCR splits)
+        List<ReceiptParser.ParsedLineItem> lineItems = geminiReceiptParser.parse(rawText);
+
+        // Get household size from user profile (default 1 if not set)
+        int householdSize = user.getHouseholdSize() != null ? user.getHouseholdSize() : 1;
+
+        // Run AI analysis pass
+        List<ClaudeItemAnalyser.ItemAnalysis> analyses = useGeminiAnalyser
+            ? geminiItemAnalyser.analyseItems(lineItems, householdSize)
+            : claudeItemAnalyser.analyseItems(lineItems, householdSize);
+
+        // Create a map for quick lookup by name
+        Map<String, ClaudeItemAnalyser.ItemAnalysis> analysisMap = analyses.stream()
+            .collect(Collectors.toMap(
+                a -> a.name().toLowerCase().trim(),
+                a -> a,
+                (a, b) -> a  // keep first on duplicate key
+            ));
 
         Bill bill = Bill.builder()
             .user(user)
             .storeName(resolveStoreName(storeName, parsed.storeName()))
             .billType(resolveBillType(billType))
             .purchaseDate(resolveDate(purchaseDate))
-            .totalAmount(resolveTotal(parsed))
+            .totalAmount(resolveTotal(parsed, lineItems))
             .rawOcrText(truncate(rawText, MAX_RAW_TEXT_LENGTH))
             .build();
 
-        for (ReceiptParser.ParsedLineItem parsedItem : parsed.items()) {
+        for (ReceiptParser.ParsedLineItem parsedItem : lineItems) {
             LineItem lineItem = LineItem.builder()
                 .bill(bill)
                 .name(parsedItem.name())
@@ -90,8 +121,26 @@ BillScanController {
                 .quantity(parsedItem.quantity())
                 .category(ItemCategory.ESSENTIAL)
                 .build();
+
+            ClaudeItemAnalyser.ItemAnalysis analysis =
+                analysisMap.get(parsedItem.name().toLowerCase().trim());
+            if (analysis != null) {
+                lineItem.setCategory(ItemCategory.valueOf(analysis.category()));
+                lineItem.setFlagReason(analysis.reason());
+                lineItem.setSuggestion(analysis.suggestion());
+                lineItem.setSavingEstimate(analysis.savingEstimate());
+                lineItem.setConfidence(BigDecimal.valueOf(analysis.confidence()));
+            }
+
             bill.getLineItems().add(lineItem);
         }
+
+        BigDecimal avoidable = bill.getLineItems().stream()
+            .filter(li -> li.getCategory() == ItemCategory.AVOIDABLE
+                       || li.getCategory() == ItemCategory.REDUCIBLE)
+            .map(LineItem::getTotalPrice)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        bill.setAvoidableAmount(avoidable);
 
         Bill saved = billRepository.save(bill);
         pantryService.updateFromBill(currentUserId(), saved);
@@ -140,11 +189,11 @@ BillScanController {
         }
     }
 
-    private BigDecimal resolveTotal(ReceiptParser.ParsedReceipt parsed) {
+    private BigDecimal resolveTotal(ReceiptParser.ParsedReceipt parsed, List<ReceiptParser.ParsedLineItem> lineItems) {
         if (parsed.total() != null && parsed.total().compareTo(BigDecimal.ZERO) > 0) {
             return parsed.total();
         }
-        return parsed.items().stream()
+        return lineItems.stream()
             .map(ReceiptParser.ParsedLineItem::totalPrice)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
     }

@@ -45,3 +45,19 @@ dvicheck:
     vision:
       # Real key lives in GOOGLE_VISION_API_KEY (local shell env / Railway env var) — never commit it here.
       api-key: ${GOOGLE_VISION_API_KEY:}
+
+app:
+  anthropic:
+    # Real key lives in ANTHROPIC_API_KEY (local shell env / Railway env var) — never commit it here.
+    api-key: ${ANTHROPIC_API_KEY:placeholder}
+    # claude-sonnet-4-20250514 (the model this project was originally built against) has been
+    # retired by Anthropic — verified via direct API call returning 404 not_found_error.
+    model: claude-sonnet-5
+    max-tokens: 1024
+  google:
+    gemini:
+      # Real key lives in GEMINI_API_KEY (local shell env / Railway env var) — never commit it here.
+      api-key: ${GEMINI_API_KEY:placeholder}
+      model: gemini-1.5-flash
+  ai:
+    use-gemini-analyser: true  # set false to use Claude

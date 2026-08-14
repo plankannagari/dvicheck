@@ -8,7 +8,7 @@ alerts before buying items they already have (shopping list check).
 ## Tech stack
 - Backend: Spring Boot 3.5, Java 21, Maven, PostgreSQL 16, Flyway
 - Mobile: React Native + Expo (iOS + Android), Zustand, Axios
-- AI: Anthropic Claude API (claude-sonnet-4-20250514)
+- AI: Anthropic Claude API (`claude-sonnet-5` — `claude-sonnet-4-20250514` was retired by Anthropic; switched Day 15 after hitting a 404 `not_found_error`)
 - OCR: Google Cloud Vision API
 - Auth: Supabase (phone OTP + JWT)
 - Payments: RevenueCat
@@ -211,30 +211,47 @@ Scan receipt → OCR → Parse → Save Bill → Update Pantry Memory
 - `authStore.setAuth()` calls `registerForPushToken()` fire-and-forget (no `await`) right after the `SecureStore` writes complete
 - Requires `expo-notifications` + `expo-device` (`npx expo install expo-notifications expo-device`) — not yet confirmed installed as of Day 13; the app won't bundle until that's run
 
-## Day 15 — Claude API Parser (IMPORTANT CONTEXT)
+## AI Pipeline (Day 15 updated)
+
+Flow:
+```
+Google Vision OCR -> raw text
+GeminiReceiptParser.parse(rawText) -> List<ParsedLineItem>  [FREE]
+  Fallback: ReceiptParser heuristic if Gemini fails
+ClaudeItemAnalyser.analyseItems(items, householdSize) -> categories  [~$0.003/scan]
+  OR GeminiItemAnalyser if app.ai.use-gemini-analyser=true  [FREE]
+LineItem saved with category, suggestion, savingEstimate
+Bill.avoidableAmount = sum AVOIDABLE + REDUCIBLE items
+```
+
+Key fixes applied Day 15:
+- `temperature: 0` set on **Gemini calls only**, for consistent extraction/categorisation results — Claude's Messages API (`claude-sonnet-5`) rejects `temperature` entirely (`400 "temperature is deprecated for this model"`), even at `0`, so Claude calls in `ClaudeReceiptParser`/`ClaudeItemAnalyser` deliberately omit it
+- Currency codes (e.g. `"USD"`) excluded from extracted line items via a post-parse filter (`isLikelyNotAnItem()` — currency-code regex + non-item keyword list), not just a prompt instruction
+- Fuzzy pantry matching for duplicate detection: exact normalised-name match first, then substring containment in either direction as a fallback (e.g. `'Milk'` matches `'Milk 2%'`) — see `ShoppingListService.findSubstringMatch()`
+- `GeminiReceiptParser` is now the primary line-item extractor; its own fallback is the original heuristic `ReceiptParser`, not Claude. `ClaudeReceiptParser` (the original Day 15 plan below) still exists and compiles but is **no longer wired into `BillScanController`** — orphaned/reference code only
+- `GeminiItemAnalyser` added as a drop-in swap for `ClaudeItemAnalyser` (same `ClaudeItemAnalyser.ItemAnalysis` record), toggled via `app.ai.use-gemini-analyser` in `application.yml` — switch providers with no code change
+
+Cost at 100K scans:
+- Gemini extraction (free tier): $0
+- Claude categorisation: ~$780/month
+- OR full Gemini (extraction + categorisation): ~$30/month total
+- Google Vision: $150/month
+
+- Gemini API key: `app.google.gemini.api-key` in yml, env var `GEMINI_API_KEY`
+- Claude API key: `app.anthropic.api-key` in yml, env var `ANTHROPIC_API_KEY`
+
+### Original Day 15 plan (Claude-only parser, superseded above)
 
 **Problem:** `ReceiptParser`'s heuristic fails whenever Google Vision's OCR splits an item's name and price across separate lines (confirmed real-world occurrence, not just a synthetic-image artifact — see Day 8/Day 10 notes above).
 
 **Solution:** replace/augment it with a Claude API call that understands receipt context well enough to survive that line-splitting.
 
-**Approach:**
-- Keep `ReceiptParser` as the fallback — do not delete it
-- After OCR extracts raw text, send that text to Claude (`claude-sonnet-4-20250514`, per the Tech Stack section above)
-- Prompt: extract structured line items from the receipt text
-- Claude returns a JSON array: `[{name, unitPrice, quantity, totalPrice}]`
-- Parse that JSON into `ParsedLineItem` records (the same record `ReceiptParser` already produces, so callers don't need to change)
-- If the Claude call fails, errors, or returns an empty array, fall back to `receiptParser.parse(rawOcrText).items()`
-
-**API key:**
-- `ANTHROPIC_API_KEY` environment variable (never hardcoded in `application.yml`, same convention as `GOOGLE_VISION_API_KEY`)
-- `application.yml`: `app.anthropic.api-key: ${ANTHROPIC_API_KEY:placeholder}`
-- Call `https://api.anthropic.com/v1/messages` via OkHttp (already a real dependency as of Day 13 — see `NotificationService`)
-
 **New class:** `ClaudeReceiptParser.java` in `service/`
 - `parse(String rawOcrText) -> List<ParsedLineItem>`
 - Fallback path: `receiptParser.parse(rawOcrText).items()`
+- Still exists, still compiles, but superseded by `GeminiReceiptParser` above — kept only as reference/backup code, not called from `BillScanController`
 
-**Expected Claude response shape** (to instruct in the prompt):
+**Expected Claude response shape** (used in the prompt):
 ```json
 [
   {"name": "Milk 2L", "quantity": 1, "unitPrice": 2.20, "totalPrice": 2.20},
@@ -278,7 +295,8 @@ Only the `BillHistoryController` transaction issue was fixed (see Day 13 backend
 ✅ Day 12 complete — User preferences (household size, currency), ProfileScreen, gear icon navigation
 ✅ Day 13 complete — push notifications, V6 migration, code review pass
 🔄 Day 14 — buffer day (rest, catch up, test on physical device)
-🔄 Day 15 next — Replace ReceiptParser with Claude API for intelligent line item extraction
+✅ Day 15 complete — Gemini Flash (free) for extraction, Claude for categorisation, fuzzy duplicate detection, temperature 0 for consistency
+🔄 Day 16 next — UI improvements for scan result, suggestion feedback thumbs up/down
 
 ## Do NOT change
 - application.yml datasource section

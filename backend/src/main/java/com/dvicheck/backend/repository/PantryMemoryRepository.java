@@ -14,4 +14,6 @@ public interface PantryMemoryRepository extends JpaRepository<PantryMemory, UUID
     Optional<PantryMemory> findByUserIdAndNormalisedName(UUID userId, String normalisedName);
 
     List<PantryMemory> findByUserIdOrderByLastBoughtDateDesc(UUID userId);
+
+    List<PantryMemory> findByUserId(UUID userId);
 }

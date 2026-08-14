@@ -18,8 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -115,20 +117,34 @@ public class ShoppingListService {
     private DuplicateCheckResult checkForDuplicate(UUID userId, String itemName) {
         String normalisedName = PantryMemory.normalise(itemName);
 
-        return pantryMemoryRepository.findByUserIdAndNormalisedName(userId, normalisedName)
-            .map(pantry -> {
-                LocalDate lastBoughtDate = pantry.getLastBoughtDate();
-                boolean withinWindow = !lastBoughtDate.isBefore(LocalDate.now().minusDays(DUPLICATE_WINDOW_DAYS));
+        Optional<PantryMemory> match = pantryMemoryRepository.findByUserIdAndNormalisedName(userId, normalisedName);
+        if (match.isEmpty()) {
+            match = findSubstringMatch(userId, normalisedName);
+        }
 
-                if (withinWindow) {
-                    long daysAgo = ChronoUnit.DAYS.between(lastBoughtDate, LocalDate.now());
-                    String warning = "Bought " + daysAgo + " days ago — check your pantry first";
-                    return new DuplicateCheckResult(true, warning, lastBoughtDate);
-                }
-
-                return new DuplicateCheckResult(false, null, lastBoughtDate);
-            })
+        return match
+            .map(this::toDuplicateResult)
             .orElseGet(() -> new DuplicateCheckResult(false, null, null));
+    }
+
+    private Optional<PantryMemory> findSubstringMatch(UUID userId, String normalisedName) {
+        return pantryMemoryRepository.findByUserId(userId).stream()
+            .filter(candidate -> candidate.getNormalisedName().contains(normalisedName)
+                || normalisedName.contains(candidate.getNormalisedName()))
+            .max(Comparator.comparing(PantryMemory::getLastBoughtDate));
+    }
+
+    private DuplicateCheckResult toDuplicateResult(PantryMemory pantry) {
+        LocalDate lastBoughtDate = pantry.getLastBoughtDate();
+        boolean withinWindow = !lastBoughtDate.isBefore(LocalDate.now().minusDays(DUPLICATE_WINDOW_DAYS));
+
+        if (withinWindow) {
+            long daysAgo = ChronoUnit.DAYS.between(lastBoughtDate, LocalDate.now());
+            String warning = "Bought " + daysAgo + " days ago — check your pantry first";
+            return new DuplicateCheckResult(true, warning, lastBoughtDate);
+        }
+
+        return new DuplicateCheckResult(false, null, lastBoughtDate);
     }
 
     private ShoppingListDto toListDto(ShoppingList list, int itemCount) {

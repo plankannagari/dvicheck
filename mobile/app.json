@@ -34,7 +34,8 @@
         {
           "photosPermission": "dvicheck needs photos to upload receipts"
         }
-      ]
+      ],
+      "expo-notifications"
     ]
   }
 }
