@@ -58,6 +58,9 @@ app:
     gemini:
       # Real key lives in GEMINI_API_KEY (local shell env / Railway env var) — never commit it here.
       api-key: ${GEMINI_API_KEY:placeholder}
-      model: gemini-1.5-flash
+      # gemini-1.5-flash is a hard 404 (fully removed). gemini-flash-latest is the current
+      # working alias — confirmed via direct API call; it only fails on billing (prepayment
+      # credits), not on the model name itself.
+      model: gemini-flash-latest
   ai:
     use-gemini-analyser: true  # set false to use Claude

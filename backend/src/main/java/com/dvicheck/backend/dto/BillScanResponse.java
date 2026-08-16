@@ -18,6 +18,8 @@ public record BillScanResponse(
             String name,
             BigDecimal unitPrice,
             BigDecimal totalPrice,
-            String category
+            String category,
+            String suggestion,
+            BigDecimal savingEstimate
     ) {}
 }

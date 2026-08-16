@@ -57,6 +57,7 @@ export default function HistoryScreen() {
       acc[cat] = lineItems.filter((item) => item.category === cat).length;
       return acc;
     }, {});
+    const flaggedCount = categoryCounts.REDUCIBLE + categoryCounts.AVOIDABLE;
 
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -93,6 +94,11 @@ export default function HistoryScreen() {
                       </Text>
                     </View>
                   )}
+                  {Number(activeBill.avoidableAmount) > 0 && (
+                    <Text style={styles.flaggedText}>
+                      {flaggedCount} item{flaggedCount !== 1 ? 's' : ''} flagged
+                    </Text>
+                  )}
                 </View>
 
                 <View style={styles.pillsRow}>
@@ -112,11 +118,23 @@ export default function HistoryScreen() {
             }
             renderItem={({ item }) => {
               const meta = CATEGORY_META[item.category] || CATEGORY_META.ESSENTIAL;
+              const showSuggestion = (item.category === 'REDUCIBLE' || item.category === 'AVOIDABLE') && !!item.suggestion;
+              const showSaving = Number(item.savingEstimate) > 0;
               return (
                 <View style={styles.itemRow}>
                   <View style={[styles.itemDot, { backgroundColor: meta.dot }]} />
-                  <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
-                  <Text style={styles.itemPrice}>{fmt(item.totalPrice)}</Text>
+                  <View style={styles.itemNameCol}>
+                    <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+                    {showSuggestion && (
+                      <Text style={styles.itemSuggestion} numberOfLines={2}>{item.suggestion}</Text>
+                    )}
+                  </View>
+                  <View style={styles.itemPriceCol}>
+                    <Text style={styles.itemPrice}>{fmt(item.totalPrice)}</Text>
+                    {showSaving && (
+                      <Text style={styles.itemSaving}>Save {fmt(item.savingEstimate)}</Text>
+                    )}
+                  </View>
                 </View>
               );
             }}
@@ -263,6 +281,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 6, marginTop: 10,
   },
   savingsBadgeText: { fontSize: 12, color: COLORS.red, fontWeight: '600' },
+  flaggedText: { fontSize: 11, color: COLORS.inkLight, marginTop: 6 },
 
   pillsRow: {
     flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16,
@@ -275,11 +294,15 @@ const styles = StyleSheet.create({
   pillText: { fontSize: 11, fontWeight: '600' },
 
   itemRow: {
-    flexDirection: 'row', alignItems: 'center',
+    flexDirection: 'row', alignItems: 'flex-start',
     backgroundColor: COLORS.card, padding: 14, gap: 12,
     borderWidth: 1, borderColor: COLORS.border, borderRadius: 14, marginBottom: 8,
   },
-  itemDot: { width: 8, height: 8, borderRadius: 4 },
-  itemName: { fontSize: 13, color: COLORS.ink, flex: 1 },
+  itemDot: { width: 8, height: 8, borderRadius: 4, marginTop: 3 },
+  itemNameCol: { flex: 1 },
+  itemName: { fontSize: 13, color: COLORS.ink },
+  itemSuggestion: { fontSize: 11, color: COLORS.inkLight, fontStyle: 'italic', marginTop: 2 },
+  itemPriceCol: { alignItems: 'flex-end' },
   itemPrice: { fontSize: 13, color: COLORS.ink, fontWeight: '600' },
+  itemSaving: { fontSize: 11, color: COLORS.green, marginTop: 2 },
 });

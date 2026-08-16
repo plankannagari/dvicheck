@@ -209,7 +209,9 @@ BillScanController {
                 li.getName(),
                 li.getUnitPrice(),
                 li.getTotalPrice(),
-                li.getCategory().name()))
+                li.getCategory().name(),
+                li.getSuggestion(),
+                li.getSavingEstimate()))
             .toList();
 
         return new BillScanResponse(

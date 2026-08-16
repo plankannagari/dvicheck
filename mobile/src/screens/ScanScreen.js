@@ -33,6 +33,45 @@ const fmtDate = (d) => d
   ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   : '';
 
+function ItemRow({ item, isLast, manual }) {
+  const meta = CATEGORY_META[item.category] || CATEGORY_META.ESSENTIAL;
+  const showCategoryLabel = item.category && item.category !== 'ESSENTIAL';
+  const showSuggestion = (item.category === 'REDUCIBLE' || item.category === 'AVOIDABLE') && !!item.suggestion;
+  const showSavingBadge = Number(item.savingEstimate) > 0;
+
+  return (
+    <View style={[styles.itemRow, !isLast && styles.itemBorder]}>
+      <View style={styles.categoryIndicator}>
+        <View style={[styles.itemDot, { backgroundColor: meta.dot }]} />
+        {showCategoryLabel && (
+          <Text style={[styles.categoryLabel, { color: meta.text }]}>{item.category}</Text>
+        )}
+      </View>
+      <View style={styles.itemMain}>
+        <View style={styles.itemNameRow}>
+          <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+          {manual && (
+            <View style={styles.manualBadge}>
+              <Text style={styles.manualBadgeText}>manual</Text>
+            </View>
+          )}
+        </View>
+        {showSuggestion && (
+          <Text style={styles.itemSuggestion} numberOfLines={2}>{item.suggestion}</Text>
+        )}
+      </View>
+      <View style={styles.itemRightCol}>
+        <Text style={styles.itemPrice}>{fmt(item.totalPrice)}</Text>
+        {showSavingBadge && (
+          <View style={styles.savingBadge}>
+            <Text style={styles.savingBadgeText}>Save {fmt(item.savingEstimate)}</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
 export default function ScanScreen({ navigation }) {
   const cameraRef = useRef(null);
   const [permission, requestPermission] = useCameraPermissions();
@@ -155,12 +194,13 @@ export default function ScanScreen({ navigation }) {
   if (phase === 'result' && scanResult) {
     const lineItems = [...(scanResult.lineItems ?? []), ...manualItems];
     const avoidableAmount = lineItems
-      .filter((item) => item.category === 'AVOIDABLE')
+      .filter((item) => item.category === 'AVOIDABLE' || item.category === 'REDUCIBLE')
       .reduce((sum, item) => sum + Number(item.totalPrice ?? 0), 0);
     const categoryCounts = CATEGORY_ORDER.reduce((acc, cat) => {
       acc[cat] = lineItems.filter((item) => item.category === cat).length;
       return acc;
     }, {});
+    const avoidableOrReducibleCount = categoryCounts.AVOIDABLE + categoryCounts.REDUCIBLE;
 
     return (
       <SafeAreaView style={styles.resultSafeArea}>
@@ -169,12 +209,17 @@ export default function ScanScreen({ navigation }) {
             <Text style={styles.storeName}>{scanResult.storeName}</Text>
             <Text style={styles.billDate}>{fmtDate(scanResult.purchaseDate)}</Text>
             <Text style={styles.totalAmount}>{fmt(scanResult.totalAmount)}</Text>
-            {avoidableAmount > 0 && (
-              <View style={styles.savingsBadge}>
-                <Text style={styles.savingsBadgeText}>{fmt(avoidableAmount)} avoidable</Text>
-              </View>
-            )}
           </View>
+
+          {avoidableAmount > 0 && (
+            <View style={styles.savingsCard}>
+              <Text style={styles.savingsCardAmount}>{fmt(avoidableAmount)}</Text>
+              <Text style={styles.savingsCardLabel}>potential savings this shop</Text>
+              <Text style={styles.savingsCardSubtext}>
+                {avoidableOrReducibleCount} avoidable or reducible item{avoidableOrReducibleCount !== 1 ? 's' : ''}
+              </Text>
+            </View>
+          )}
 
           <View style={styles.pillsRow}>
             {CATEGORY_ORDER.map((cat) => {
@@ -192,19 +237,9 @@ export default function ScanScreen({ navigation }) {
 
           {lineItems.length > 0 && (
             <View style={styles.itemsCard}>
-              {lineItems.map((item, i) => {
-                const meta = CATEGORY_META[item.category] || CATEGORY_META.ESSENTIAL;
-                return (
-                  <View
-                    key={item.id ?? i}
-                    style={[styles.itemRow, i < lineItems.length - 1 && styles.itemBorder]}
-                  >
-                    <View style={[styles.itemDot, { backgroundColor: meta.dot }]} />
-                    <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
-                    <Text style={styles.itemPrice}>{fmt(item.totalPrice)}</Text>
-                  </View>
-                );
-              })}
+              {lineItems.map((item, i) => (
+                <ItemRow key={item.id ?? i} item={item} isLast={i === lineItems.length - 1} />
+              ))}
             </View>
           )}
 
@@ -237,17 +272,7 @@ export default function ScanScreen({ navigation }) {
             {manualItems.length > 0 && (
               <View style={styles.itemsCard}>
                 {manualItems.map((item, i) => (
-                  <View
-                    key={item.id}
-                    style={[styles.itemRow, i < manualItems.length - 1 && styles.itemBorder]}
-                  >
-                    <View style={[styles.itemDot, { backgroundColor: CATEGORY_META.ESSENTIAL.dot }]} />
-                    <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
-                    <View style={styles.manualBadge}>
-                      <Text style={styles.manualBadgeText}>manual</Text>
-                    </View>
-                    <Text style={styles.itemPrice}>{fmt(item.totalPrice)}</Text>
-                  </View>
+                  <ItemRow key={item.id} item={item} isLast={i === manualItems.length - 1} manual />
                 ))}
               </View>
             )}
@@ -415,11 +440,14 @@ const styles = StyleSheet.create({
   storeName: { fontSize: 17, color: COLORS.ink, fontWeight: '600', marginBottom: 4 },
   billDate: { fontSize: 12, color: COLORS.inkLight, marginBottom: 12 },
   totalAmount: { fontSize: 32, color: COLORS.accent, fontWeight: '300' },
-  savingsBadge: {
-    backgroundColor: COLORS.redLight, borderRadius: 20,
-    paddingHorizontal: 12, paddingVertical: 6, marginTop: 10,
+
+  savingsCard: {
+    width: '100%', backgroundColor: COLORS.greenLight, borderRadius: 16,
+    padding: 20, alignItems: 'center', marginBottom: 16,
   },
-  savingsBadgeText: { fontSize: 12, color: COLORS.red, fontWeight: '600' },
+  savingsCardAmount: { fontSize: 32, color: COLORS.green, fontWeight: '700' },
+  savingsCardLabel: { fontSize: 13, color: COLORS.green, fontWeight: '600', marginTop: 4 },
+  savingsCardSubtext: { fontSize: 12, color: COLORS.inkLight, marginTop: 6 },
 
   pillsRow: {
     flexDirection: 'row', flexWrap: 'wrap', gap: 8,
@@ -437,13 +465,24 @@ const styles = StyleSheet.create({
     overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border, marginBottom: 24,
   },
   itemRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
     padding: 14, paddingHorizontal: 16, gap: 12,
   },
   itemBorder: { borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  categoryIndicator: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingTop: 2 },
   itemDot: { width: 8, height: 8, borderRadius: 4 },
-  itemName: { fontSize: 13, color: COLORS.ink, flex: 1 },
+  categoryLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 0.3 },
+  itemMain: { flex: 1 },
+  itemNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  itemName: { fontSize: 13, color: COLORS.ink, flexShrink: 1 },
+  itemSuggestion: { fontSize: 12, fontStyle: 'italic', color: COLORS.inkLight, marginTop: 3 },
+  itemRightCol: { alignItems: 'flex-end', paddingTop: 2 },
   itemPrice: { fontSize: 13, color: COLORS.ink, fontWeight: '600' },
+  savingBadge: {
+    backgroundColor: COLORS.greenLight, borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 3, marginTop: 4,
+  },
+  savingBadgeText: { fontSize: 10, color: COLORS.green, fontWeight: '700' },
 
   manualSection: { width: '100%', marginBottom: 16 },
   manualSectionLabel: {
@@ -467,7 +506,7 @@ const styles = StyleSheet.create({
   manualAddBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   manualBadge: {
     backgroundColor: COLORS.border, borderRadius: 10,
-    paddingHorizontal: 8, paddingVertical: 3, marginRight: 8,
+    paddingHorizontal: 8, paddingVertical: 3,
   },
   manualBadgeText: { fontSize: 10, color: COLORS.inkLight, fontWeight: '600' },
 });

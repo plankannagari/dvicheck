@@ -90,7 +90,7 @@ User → (1:many) → PantryMemory
 ```
 
 ## Backend patterns (established Day 4)
-- Auth endpoints are at `/auth/**` (public — no JWT needed)
+- Auth endpoints are at `/api/auth/**` (`POST /api/auth/send-otp`, `POST /api/auth/verify-otp` — public, no JWT needed; explicitly `permitAll()` in `SecurityConfig`)
 - All `/api/**` routes (except `/api/health`) require a valid JWT in the `Authorization` header
 - Get current user ID in any controller: `SecurityContextHolder.getContext().getAuthentication().getPrincipal()`
 - Cast principal to `String`, then `UUID.fromString(principal)` to get userId
@@ -240,6 +240,14 @@ Cost at 100K scans:
 - Gemini API key: `app.google.gemini.api-key` in yml, env var `GEMINI_API_KEY`
 - Claude API key: `app.anthropic.api-key` in yml, env var `ANTHROPIC_API_KEY`
 
+### Gemini config (fixed Day 16)
+- Correct model name: **`gemini-flash-latest`** (not `gemini-1.5-flash`, not `gemini-1.5-flash-latest` — both are hard 404s, fully removed from the API surface; verified directly via curl). `gemini-2.5-flash`/`gemini-2.5-flash-lite` still show up in `ListModels` but `generateContent` rejects them with `404 "no longer available to new users"`
+- Key source: `aistudio.google.com/apikey` (not Google Cloud Console)
+- API to enable: Generative Language API, in Google Cloud Console
+- **Actual root cause of the Day 15/16 Gemini failures: depleted prepayment credits** on the AI Studio key's project — `429 RESOURCE_EXHAUSTED "Your prepayment credits are depleted"`. The key was valid, the API was enabled, and there were no IP restrictions the whole time; every `generateContent` call failed at the billing layer, not auth/config. Fixed by adding prepayment credits at `ai.studio/projects`
+- Config key: `app.google.gemini.api-key`
+- Production env var: `GEMINI_API_KEY`
+
 ### Original Day 15 plan (Claude-only parser, superseded above)
 
 **Problem:** `ReceiptParser`'s heuristic fails whenever Google Vision's OCR splits an item's name and price across separate lines (confirmed real-world occurrence, not just a synthetic-image artifact — see Day 8/Day 10 notes above).
@@ -259,8 +267,16 @@ Cost at 100K scans:
 ]
 ```
 
+## Scan result UI patterns (established Day 16)
+- `BillScanResponse.LineItemResult` now includes `suggestion` (`String`) and `savingEstimate` (`BigDecimal`), populated from `LineItem.getSuggestion()`/`getSavingEstimate()` in `BillScanController.toResponse()` — previously only `id`/`name`/`unitPrice`/`totalPrice`/`category` were returned, so the AI-generated suggestion/saving data was computed and saved but never reached the client
+- `BillDetailResponse.LineItemDetail` already had both fields (plus `quantity`/`confidence`) — no change needed there
+- `ScanScreen`'s result phase (`ItemRow` component): suggestion text (italic, 12px, `COLORS.inkLight`) shown below the item name, only for `REDUCIBLE`/`AVOIDABLE` categories; a per-item "Save $X.XX" pill (`COLORS.greenLight` bg / `COLORS.green` text) shows next to the price whenever `savingEstimate > 0`, with no category restriction; a colored uppercase category label (`REDUCIBLE`/`AVOIDABLE`/`DUPLICATE`) sits next to the dot — `ESSENTIAL` shows just the dot
+- `HistoryScreen`'s detail view mirrors the same suggestion-text rule (11px here, same `REDUCIBLE`/`AVOIDABLE`-only gating) and a right-aligned green "Save $X.XX" line below the price
+- Savings summary card: `ScanScreen` replaced its old small header badge with a dedicated card showing the total avoidable+reducible amount prominently (large green `$X.XX`, "potential savings this shop" label, "X avoidable or reducible items" subtext), shown only when that total is `> 0`; `HistoryScreen`'s detail view kept its existing badge as-is and added an "X items flagged" line below it (same `REDUCIBLE + AVOIDABLE` count)
+- Client-side `avoidableAmount` in `ScanScreen` sums `AVOIDABLE` **and** `REDUCIBLE` totals (previously `AVOIDABLE` only) — the scan response has no server-computed `avoidableAmount` field (unlike `BillDetailResponse`, which does), so this stays a client-side calc for now
+
 ## Migrations
-- `V1`–`V6` exist (`V6` = `push_token`). Next free version is **`V7`**.
+- `V1`–`V6` exist (`V6` = `push_token`). Next free version is **`V7`** — no migration was needed for Day 16 (response-DTO-only change, no schema change).
 
 ## Tech debt (from Day 9-12 code review, Day 13)
 Only the `BillHistoryController` transaction issue was fixed (see Day 13 backend patterns above). Everything else below was deliberately left as-is:
@@ -296,7 +312,8 @@ Only the `BillHistoryController` transaction issue was fixed (see Day 13 backend
 ✅ Day 13 complete — push notifications, V6 migration, code review pass
 🔄 Day 14 — buffer day (rest, catch up, test on physical device)
 ✅ Day 15 complete — Gemini Flash (free) for extraction, Claude for categorisation, fuzzy duplicate detection, temperature 0 for consistency
-🔄 Day 16 next — UI improvements for scan result, suggestion feedback thumbs up/down
+✅ Day 16 complete — Gemini fixed (root cause was depleted prepayment credits on the AI Studio key, not the model name or key source; model corrected to `gemini-flash-latest`), scan result UI shows suggestions and saving estimates, `BillScanResponse` includes `suggestion`/`savingEstimate`
+🔄 Day 17 next — AI-powered weekly insights narrative, spending pattern analysis
 
 ## Do NOT change
 - application.yml datasource section
