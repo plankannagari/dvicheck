@@ -5,6 +5,7 @@ import com.dvicheck.backend.model.ItemCategory;
 import com.dvicheck.backend.model.LineItem;
 import com.dvicheck.backend.repository.BillRepository;
 import com.dvicheck.backend.repository.LineItemRepository;
+import com.dvicheck.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,8 @@ public class InsightsService {
 
     private final BillRepository billRepository;
     private final LineItemRepository lineItemRepository;
+    private final UserRepository userRepository;
+    private final SpendingNarrativeService spendingNarrativeService;
 
     @Transactional(readOnly = true)
     public WeeklyInsightDto getWeeklyInsights(UUID userId) {
@@ -62,6 +65,32 @@ public class InsightsService {
 
         String pattern = determinePattern(thisWeekTotal, thisWeekAvoidable, prevWeekTotal);
 
+        // Get household size from user profile
+        int householdSize = userRepository.findById(userId)
+            .map(u -> u.getHouseholdSize() != null ? u.getHouseholdSize() : 1)
+            .orElse(1);
+
+        // Top category: the category with highest spend value
+        String topCategory = spendByCategory.entrySet().stream()
+            .max(Map.Entry.comparingByValue())
+            .map(Map.Entry::getKey)
+            .orElse(null);
+
+        // Top item names (first 3 from topItems)
+        List<String> topItemNames = topItems.stream()
+            .limit(3)
+            .map(WeeklyInsightDto.TopItemDto::name)
+            .toList();
+
+        // Build context and generate narrative
+        SpendingNarrativeService.NarrativeContext ctx =
+            new SpendingNarrativeService.NarrativeContext(
+                thisWeekTotal, thisWeekAvoidable, prevWeekTotal,
+                vsLastWeekPercent.doubleValue(), (int) thisWeekBills, householdSize,
+                topCategory, topItemNames
+            );
+        String narrative = spendingNarrativeService.generateNarrative(ctx, userId, weekStart);
+
         return new WeeklyInsightDto(
             weekStart,
             weekEnd,
@@ -72,7 +101,8 @@ public class InsightsService {
             vsLastWeekPercent.doubleValue(),
             topItems,
             spendByCategory,
-            pattern
+            pattern,
+            narrative
         );
     }
 

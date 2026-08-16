@@ -15,7 +15,8 @@ public record WeeklyInsightDto(
         double vsLastWeekPercent,
         List<TopItemDto> topItems,
         Map<String, BigDecimal> spendByCategory,
-        String pattern
+        String pattern,
+        String narrative
 ) {
     public record TopItemDto(
             String name,

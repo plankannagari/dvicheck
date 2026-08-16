@@ -133,14 +133,26 @@ export default function InsightsScreen() {
               })()}
             </View>
 
-            {/* Pattern insight card */}
-            <View style={styles.patternCard}>
-              <Text style={styles.patternEmoji}>💡</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.patternText}>{insights.pattern}</Text>
-                <Text style={styles.patternSub}>Based on this week vs last week</Text>
+            {/* Spending coach card */}
+            {insights.narrative && insights.narrative.trim() ? (
+              <View style={styles.coachCard}>
+                <View style={styles.coachHeader}>
+                  <Text style={styles.coachIcon}>🧠</Text>
+                  <Text style={styles.coachLabel}>Spending Coach</Text>
+                </View>
+                <Text style={styles.coachText}>{insights.narrative}</Text>
+                <View style={styles.coachDivider} />
+                <Text style={styles.coachFooter}>{insights.pattern}</Text>
               </View>
-            </View>
+            ) : (
+              <View style={styles.patternCard}>
+                <Text style={styles.patternEmoji}>💡</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.patternText}>{insights.pattern}</Text>
+                  <Text style={styles.patternSub}>Based on this week vs last week</Text>
+                </View>
+              </View>
+            )}
 
             {/* Top items */}
             <Text style={styles.sectionLabel}>Top items this week</Text>
@@ -232,6 +244,22 @@ const styles = StyleSheet.create({
   patternEmoji: { fontSize: 22 },
   patternText: { fontSize: 14, color: COLORS.ink, lineHeight: 20, fontWeight: '600' },
   patternSub: { fontSize: 11, color: COLORS.inkLight, marginTop: 4 },
+
+  coachCard: {
+    backgroundColor: COLORS.card, borderRadius: 16, padding: 18, marginBottom: 20,
+    borderLeftWidth: 3, borderLeftColor: COLORS.accent,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+  },
+  coachHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  coachIcon: { fontSize: 16 },
+  coachLabel: {
+    fontSize: 10, color: COLORS.accent, fontWeight: '700',
+    letterSpacing: 1.5, textTransform: 'uppercase',
+  },
+  coachText: { fontSize: 14, color: COLORS.ink, lineHeight: 22 },
+  coachDivider: { height: 1, backgroundColor: COLORS.border, marginVertical: 12 },
+  coachFooter: { fontSize: 11, color: COLORS.inkLight, fontStyle: 'italic' },
 
   itemsCard: {
     backgroundColor: COLORS.card, borderRadius: 16, overflow: 'hidden',

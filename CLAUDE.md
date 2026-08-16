@@ -275,8 +275,18 @@ Cost at 100K scans:
 - Savings summary card: `ScanScreen` replaced its old small header badge with a dedicated card showing the total avoidable+reducible amount prominently (large green `$X.XX`, "potential savings this shop" label, "X avoidable or reducible items" subtext), shown only when that total is `> 0`; `HistoryScreen`'s detail view kept its existing badge as-is and added an "X items flagged" line below it (same `REDUCIBLE + AVOIDABLE` count)
 - Client-side `avoidableAmount` in `ScanScreen` sums `AVOIDABLE` **and** `REDUCIBLE` totals (previously `AVOIDABLE` only) — the scan response has no server-computed `avoidableAmount` field (unlike `BillDetailResponse`, which does), so this stays a client-side calc for now
 
+## AI-powered weekly narrative (established Day 17)
+- `SpendingNarrativeService.generateNarrative(ctx, userId, weekStart)` — calls Gemini (`app.google.gemini.model`) to write a personalised 2-3 sentence weekly spending coach message, same OkHttp/`ObjectMapper` pattern as `GeminiReceiptParser`/`GeminiItemAnalyser`
+- Gemini `temperature: 0` for the narrative call, same as extraction/categorisation — deliberately deterministic, not creative; no `responseMimeType` is set (unlike the JSON-extraction calls) since the output is free-form prose, not structured data
+- `NarrativeContext` record (nested in `SpendingNarrativeService`): `totalSpent`, `avoidableSpend`, `prevWeekTotal`, `vsLastWeekPercent`, `billsScanned`, `householdSize`, `topCategory`, `topItemNames`
+- In-memory cache: `ConcurrentHashMap<String, String>` keyed by `userId + "_" + weekStart` — narrative is generated once per user per week, not on every `GET /api/insights/weekly` call. Cache clears on backend restart (no Redis yet); `SpendingNarrativeService.clearCache()` exists for manual invalidation. Note: a fallback narrative from a failed Gemini call is cached too, same as a real one — a transient Gemini failure locks that user into the fallback for the rest of the week until restart or manual clear
+- Fallback on any failure (non-2xx response, empty text, exception): `"Your weekly spending summary is ready. Check your top items below."`
+- `WeeklyInsightDto` now carries both `pattern` (the short pre-existing hardcoded one-liner from `determinePattern()`, unchanged) and `narrative` (the longer AI-generated one) as separate fields
+- `InsightsService.getWeeklyInsights()` also injects `UserRepository` (to read `householdSize` for the narrative context, defaulting to `1`) alongside the new `SpendingNarrativeService`
+- `InsightsScreen`: the old amber "pattern" card is now the fallback branch — shown only when `insights.narrative` is null/blank. Otherwise a "Spending Coach" card renders instead (🧠 icon + uppercase label, narrative text at 14px/`lineHeight: 22`, a divider, then `insights.pattern` as a smaller italic footer line) — `COLORS.card` background, `borderLeftWidth: 3` in `COLORS.accent`, subtle shadow/elevation
+
 ## Migrations
-- `V1`–`V6` exist (`V6` = `push_token`). Next free version is **`V7`** — no migration was needed for Day 16 (response-DTO-only change, no schema change).
+- `V1`–`V6` exist (`V6` = `push_token`). Next free version is **`V7`** — no migration was needed for Day 16 or Day 17 (both were response-DTO/service-layer-only changes, no schema change).
 
 ## Tech debt (from Day 9-12 code review, Day 13)
 Only the `BillHistoryController` transaction issue was fixed (see Day 13 backend patterns above). Everything else below was deliberately left as-is:
@@ -313,7 +323,8 @@ Only the `BillHistoryController` transaction issue was fixed (see Day 13 backend
 🔄 Day 14 — buffer day (rest, catch up, test on physical device)
 ✅ Day 15 complete — Gemini Flash (free) for extraction, Claude for categorisation, fuzzy duplicate detection, temperature 0 for consistency
 ✅ Day 16 complete — Gemini fixed (root cause was depleted prepayment credits on the AI Studio key, not the model name or key source; model corrected to `gemini-flash-latest`), scan result UI shows suggestions and saving estimates, `BillScanResponse` includes `suggestion`/`savingEstimate`
-🔄 Day 17 next — AI-powered weekly insights narrative, spending pattern analysis
+✅ Day 17 complete — `SpendingNarrativeService` (Gemini), personalised weekly coach narrative, `InsightsScreen` coach card, narrative caching
+🔄 Day 18 next — Error handling improvements, loading states polish, empty state screens
 
 ## Do NOT change
 - application.yml datasource section
