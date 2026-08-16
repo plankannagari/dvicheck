@@ -28,6 +28,27 @@ apiClient.interceptors.response.use(
       await SecureStore.deleteItemAsync('user_id');
       console.log('Session expired — tokens cleared');
     }
+
+    if (error.response) {
+      error.appError = {
+        code: error.response.data?.code || 'UNKNOWN_ERROR',
+        message: error.response.data?.message || 'Something went wrong. Please try again.',
+        isNetworkError: false,
+      };
+    } else if (error.request) {
+      error.appError = {
+        code: 'NETWORK_ERROR',
+        message: "Can't reach the server. Check your connection and try again.",
+        isNetworkError: true,
+      };
+    } else {
+      error.appError = {
+        code: 'CLIENT_ERROR',
+        message: 'Something went wrong. Please try again.',
+        isNetworkError: false,
+      };
+    }
+
     return Promise.reject(error);
   }
 );
