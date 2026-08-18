@@ -10,16 +10,22 @@ const useHistoryStore = create((set, get) => ({
   isLoadingDetail: false,
   hasMore: true,
   page: 0,
+  search: '',
   error: null,
 
-  loadBills: async (refresh = false) => {
+  loadBills: async (refresh = false, search = '') => {
+    // Pagination continuation (refresh=false) reuses whichever search is
+    // already active in the store, rather than the caller's default '' —
+    // otherwise scrolling to load more during an active search would
+    // silently fetch the next page unfiltered.
+    const activeSearch = refresh ? search : get().search;
     const page = refresh ? 0 : get().page;
     if (refresh) {
-      set({ page: 0, bills: [] });
+      set({ page: 0, bills: [], search: activeSearch });
     }
     set({ isLoading: true, error: null });
     try {
-      const result = await fetchBills(page, PAGE_SIZE);
+      const result = await fetchBills(page, PAGE_SIZE, activeSearch);
       set((state) => ({
         bills: refresh ? result : [...state.bills, ...result],
         hasMore: result.length === PAGE_SIZE,
@@ -28,7 +34,7 @@ const useHistoryStore = create((set, get) => ({
       }));
     } catch (error) {
       console.error('loadBills error:', error);
-      set({ error: 'Could not load your bills.', isLoading: false });
+      set({ error: error.appError?.message || 'Something went wrong.', isLoading: false });
     }
   },
 

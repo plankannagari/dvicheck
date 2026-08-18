@@ -1,6 +1,7 @@
 package com.dvicheck.backend.repository;
 
 import com.dvicheck.backend.model.Bill;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -29,4 +30,10 @@ public interface BillRepository extends JpaRepository<Bill, UUID> {
 
     @Query("SELECT COALESCE(SUM(b.totalAmount), 0) FROM Bill b WHERE b.user.id = :userId AND b.purchaseDate BETWEEN :from AND :to")
     BigDecimal sumTotalBetween(@Param("userId") UUID userId, @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    @Query("SELECT b FROM Bill b WHERE b.user.id = :userId "
+        + "AND LOWER(b.storeName) LIKE LOWER(CONCAT('%', :search, '%')) "
+        + "ORDER BY b.purchaseDate DESC, b.createdAt DESC")
+    Page<Bill> findByUserIdAndStoreNameContainingIgnoreCase(
+        @Param("userId") UUID userId, @Param("search") String search, Pageable pageable);
 }

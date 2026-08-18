@@ -1,5 +1,6 @@
 package com.dvicheck.backend.service;
 
+import com.dvicheck.backend.dto.PantryItemDto;
 import com.dvicheck.backend.model.Bill;
 import com.dvicheck.backend.model.LineItem;
 import com.dvicheck.backend.model.PantryMemory;
@@ -10,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -55,5 +57,35 @@ public class PantryService {
         } catch (Exception e) {
             log.warn("Pantry update failed for user={}, bill={}", userId, bill.getId(), e);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<PantryItemDto> getPantryItems(UUID userId) {
+        return pantryMemoryRepository.findByUserIdOrderByLastBoughtDateDesc(userId).stream()
+            .map(this::toDto)
+            .toList();
+    }
+
+    private PantryItemDto toDto(PantryMemory pantry) {
+        return new PantryItemDto(
+            pantry.getId(),
+            pantry.getItemName(),
+            pantry.getNormalisedName(),
+            pantry.getLastBoughtDate(),
+            pantry.getPurchaseCount(),
+            pantry.getTypicalQuantity(),
+            pantry.getEstimatedRemainingDays(),
+            depletionStatus(pantry.getEstimatedRemainingDays())
+        );
+    }
+
+    private String depletionStatus(int estimatedRemainingDays) {
+        if (estimatedRemainingDays <= 2) {
+            return "LOW";
+        }
+        if (estimatedRemainingDays <= 5) {
+            return "MEDIUM";
+        }
+        return "OK";
     }
 }

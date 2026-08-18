@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   SafeAreaView, StatusBar, ScrollView, RefreshControl,
@@ -9,6 +9,8 @@ import { COLORS } from '../constants';
 import useShoppingStore from '../store/shoppingStore';
 import useToastStore from '../store/toastStore';
 import Toast from '../components/Toast';
+import EmptyState from '../components/EmptyState';
+import SkeletonList from '../components/SkeletonList';
 
 const STATUS_META = {
   DRAFT: { label: 'Draft', bg: COLORS.amberLight, text: COLORS.amber },
@@ -30,6 +32,7 @@ export default function ListsScreen() {
   const [itemName, setItemName] = useState('');
   const [itemQuantity, setItemQuantity] = useState('');
   const [swipedItemId, setSwipedItemId] = useState(null);
+  const itemNameInputRef = useRef(null);
 
   useEffect(() => { loadLists(); }, []);
 
@@ -88,6 +91,7 @@ export default function ListsScreen() {
 
   if (activeList) {
     const duplicateCount = items.filter((item) => item.isDuplicate).length;
+    const isDetailFirstLoad = isLoading && items.length === 0;
 
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -125,12 +129,27 @@ export default function ListsScreen() {
               />
             }
           >
-            {items.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyIcon}>🛒</Text>
-                <Text style={styles.emptyText}>No items yet</Text>
-                <Text style={styles.emptySub}>Add your first item below</Text>
+            {isDetailFirstLoad ? (
+              <SkeletonList count={3} cardHeight={64} />
+            ) : error ? (
+              <View style={styles.errorState}>
+                <Text style={styles.errorStateText}>{error}</Text>
+                <TouchableOpacity
+                  style={styles.retryBtn}
+                  onPress={() => selectList(activeList.id)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.retryBtnText}>Retry</Text>
+                </TouchableOpacity>
               </View>
+            ) : items.length === 0 ? (
+              <EmptyState
+                icon="🛒"
+                title="List is empty"
+                subtitle="Add an item to get started"
+                actionLabel="Add item"
+                onAction={() => itemNameInputRef.current?.focus()}
+              />
             ) : (
               items.map((item) => (
                 <TouchableOpacity
@@ -179,6 +198,7 @@ export default function ListsScreen() {
 
           <View style={styles.addItemBar}>
             <TextInput
+              ref={itemNameInputRef}
               style={styles.addItemInput}
               placeholder="Add an item"
               placeholderTextColor={COLORS.inkFaint}
@@ -333,6 +353,14 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 40, marginBottom: 12 },
   emptyText: { fontSize: 14, color: COLORS.inkLight, textAlign: 'center' },
   emptySub: { fontSize: 13, color: COLORS.inkLight, textAlign: 'center', marginTop: 4 },
+
+  errorState: { padding: 32, alignItems: 'center' },
+  errorStateText: { fontSize: 14, color: COLORS.red, textAlign: 'center', marginBottom: 16 },
+  retryBtn: {
+    backgroundColor: COLORS.accent, borderRadius: 12,
+    paddingVertical: 12, paddingHorizontal: 24,
+  },
+  retryBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 
   // detail mode
   detailHeader: {

@@ -13,7 +13,7 @@ const useInsightsStore = create((set) => ({
       set({ insights: result, isLoading: false });
     } catch (error) {
       console.error('loadInsights error:', error);
-      set({ error: 'Could not load your insights.', isLoading: false });
+      set({ error: error.appError?.message || 'Something went wrong.', isLoading: false });
     }
   },
 

@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import Toast from './src/components/Toast';
 import MainTabNavigator from './src/navigation/MainTabNavigator';
+import InsightsScreen from './src/screens/InsightsScreen';
 import OTPVerifyScreen from './src/screens/OTPVerifyScreen';
 import PhoneEntryScreen from './src/screens/PhoneEntryScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
@@ -24,6 +25,7 @@ export default function App() {
           <Stack.Screen name="OTPVerify" component={OTPVerifyScreen} />
           <Stack.Screen name="MainApp" component={MainTabNavigator} />
           <Stack.Screen name="Profile" component={ProfileScreen} />
+          <Stack.Screen name="Insights" component={InsightsScreen} />
         </Stack.Navigator>
         <Toast />
       </NavigationContainer>

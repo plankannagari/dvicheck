@@ -3,7 +3,7 @@ import { View, Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import ScanScreen from '../screens/ScanScreen';
 import ListsScreen from '../screens/ListsScreen';
-import InsightsScreen from '../screens/InsightsScreen';
+import PantryScreen from '../screens/PantryScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import { COLORS } from '../constants';
 
@@ -85,11 +85,11 @@ export default function MainTabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Insights"
-        component={InsightsScreen}
+        name="Pantry"
+        component={PantryScreen}
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="📈" active={focused} />
+            <TabIcon emoji="🧺" active={focused} />
           ),
         }}
       />

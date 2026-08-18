@@ -18,7 +18,7 @@ const useShoppingStore = create((set, get) => ({
       set({ lists, isLoading: false });
     } catch (error) {
       console.error('loadLists error:', error);
-      set({ error: 'Could not load your lists.', isLoading: false });
+      set({ error: error.appError?.message || 'Something went wrong.', isLoading: false });
     }
   },
 
@@ -47,7 +47,7 @@ const useShoppingStore = create((set, get) => ({
       set({ activeList: list, items, isLoading: false });
     } catch (error) {
       console.error('selectList error:', error);
-      set({ error: 'Could not load this list.', isLoading: false });
+      set({ error: error.appError?.message || 'Something went wrong.', isLoading: false });
       throw error;
     }
   },

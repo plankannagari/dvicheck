@@ -1,11 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
   SafeAreaView, StatusBar, FlatList, RefreshControl, ActivityIndicator,
 } from 'react-native';
 
 import { COLORS } from '../constants';
 import useHistoryStore from '../store/historyStore';
+import EmptyState from '../components/EmptyState';
 
 const CATEGORY_ORDER = ['ESSENTIAL', 'REDUCIBLE', 'AVOIDABLE', 'DUPLICATE'];
 const CATEGORY_META = {
@@ -43,7 +44,16 @@ export default function HistoryScreen() {
     loadBills, loadBillDetail, clearActiveBill,
   } = useHistoryStore();
 
+  const [search, setSearch] = useState('');
+
   useEffect(() => { loadBills(true); }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadBills(true, search); // reset + search
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const handleEndReached = () => {
     if (hasMore && !isLoading) {
@@ -160,6 +170,23 @@ export default function HistoryScreen() {
         <Text style={styles.heading}>Bill History</Text>
       </View>
 
+      <View style={styles.searchBar}>
+        <Text style={styles.searchIcon}>🔍</Text>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by store name..."
+          placeholderTextColor={COLORS.inkFaint}
+          value={search}
+          onChangeText={setSearch}
+          returnKeyType="search"
+        />
+        {search.length > 0 && (
+          <TouchableOpacity onPress={() => setSearch('')} activeOpacity={0.7} style={styles.clearBtn}>
+            <Text style={styles.clearBtnText}>✕</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
       {error ? (
         <View style={styles.errorBanner}>
           <Text style={styles.errorText}>{error}</Text>
@@ -182,10 +209,19 @@ export default function HistoryScreen() {
           onEndReached={handleEndReached}
           onEndReachedThreshold={0.4}
           ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>🧾</Text>
-              <Text style={styles.emptyText}>No bills yet. Scan your first receipt!</Text>
-            </View>
+            search.length > 0 ? (
+              <EmptyState
+                icon="🔍"
+                title="No results"
+                subtitle={`No bills matching "${search}"`}
+              />
+            ) : (
+              <EmptyState
+                icon="🧾"
+                title="No bills yet"
+                subtitle="Scan your first receipt!"
+              />
+            )
           }
           renderItem={({ item }) => (
             <TouchableOpacity
@@ -234,6 +270,17 @@ const styles = StyleSheet.create({
   },
   errorText: { fontSize: 12, color: COLORS.red },
 
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: COLORS.card, borderRadius: 12,
+    borderWidth: 1, borderColor: COLORS.border,
+    marginHorizontal: 16, marginBottom: 12, paddingHorizontal: 12,
+  },
+  searchIcon: { fontSize: 13, marginRight: 8 },
+  searchInput: { flex: 1, paddingVertical: 10, fontSize: 14, color: COLORS.ink },
+  clearBtn: { padding: 4, marginLeft: 4 },
+  clearBtnText: { fontSize: 13, color: COLORS.inkLight },
+
   billRow: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: COLORS.card, borderRadius: 16, padding: 14,
@@ -255,7 +302,6 @@ const styles = StyleSheet.create({
   skeletonFill: { backgroundColor: COLORS.border },
 
   emptyState: { padding: 40, alignItems: 'center' },
-  emptyIcon: { fontSize: 40, marginBottom: 12 },
   emptyText: { fontSize: 14, color: COLORS.inkLight, textAlign: 'center' },
 
   // detail mode

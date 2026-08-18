@@ -39,12 +39,17 @@ public class BillHistoryController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<RecentBillDto>>> getBills(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        List<RecentBillDto> dtos = billRepository
-            .findRecentByUserId(currentUserId(), PageRequest.of(page, size))
-            .stream()
-            .map(this::toRecentBillDto)
-            .toList();
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search) {
+        List<RecentBillDto> dtos = (search == null || search.isBlank())
+            ? billRepository.findRecentByUserId(currentUserId(), PageRequest.of(page, size))
+                .stream()
+                .map(this::toRecentBillDto)
+                .toList()
+            : billRepository.findByUserIdAndStoreNameContainingIgnoreCase(
+                currentUserId(), search, PageRequest.of(page, size))
+                .map(this::toRecentBillDto)
+                .getContent();
         return ResponseEntity.ok(ApiResponse.ok(dtos));
     }
 

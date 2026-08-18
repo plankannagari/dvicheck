@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, StatusBar,
-  ScrollView, RefreshControl,
+  ScrollView, RefreshControl, TouchableOpacity,
 } from 'react-native';
 
 import { COLORS } from '../constants';
 import useInsightsStore from '../store/insightsStore';
+import EmptyState from '../components/EmptyState';
+import SkeletonList from '../components/SkeletonList';
 
 const CATEGORY_ORDER = ['ESSENTIAL', 'REDUCIBLE', 'AVOIDABLE', 'DUPLICATE'];
 const CATEGORY_META = {
@@ -25,16 +27,13 @@ const fmtDateRange = (start, end) => {
   return `${s} — ${e}`;
 };
 
-function SkeletonBox({ height = 20, width = '100%', style }) {
-  return <View style={[{ height, width, borderRadius: 12, backgroundColor: COLORS.border }, style]} />;
-}
-
 export default function InsightsScreen() {
   const { insights, isLoading, error, loadInsights } = useInsightsStore();
 
   useEffect(() => { loadInsights(); }, []);
 
   const isFirstLoad = isLoading && insights === null;
+  const isEmpty = insights && Number(insights.totalSpent) === 0;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -47,12 +46,6 @@ export default function InsightsScreen() {
         )}
       </View>
 
-      {error ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      ) : null}
-
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -62,16 +55,20 @@ export default function InsightsScreen() {
         }
       >
         {isFirstLoad ? (
-          <View style={{ gap: 16 }}>
-            <SkeletonBox height={140} />
-            <SkeletonBox height={100} />
-            <SkeletonBox height={160} />
+          <SkeletonList count={3} cardHeight={100} />
+        ) : error ? (
+          <View style={styles.errorState}>
+            <Text style={styles.errorStateText}>{error}</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={loadInsights} activeOpacity={0.8}>
+              <Text style={styles.retryBtnText}>Retry</Text>
+            </TouchableOpacity>
           </View>
-        ) : !insights ? null : Number(insights.totalSpent) === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyIcon}>🧾</Text>
-            <Text style={styles.emptyText}>Scan receipts this week to see your insights</Text>
-          </View>
+        ) : !insights || isEmpty ? (
+          <EmptyState
+            icon="📊"
+            title="Nothing to show yet"
+            subtitle="Insights appear once you have scanned at least one receipt this week"
+          />
         ) : (
           <>
             {/* Hero metrics row */}
@@ -193,18 +190,14 @@ const styles = StyleSheet.create({
   heading: { fontSize: 22, color: COLORS.ink, fontWeight: '600' },
   dateRange: { fontSize: 12, color: COLORS.inkLight, marginTop: 4 },
 
-  errorBanner: {
-    backgroundColor: COLORS.redLight, padding: 10, marginHorizontal: 16,
-    borderRadius: 10, marginBottom: 4,
+  errorState: { padding: 32, alignItems: 'center' },
+  errorStateText: { fontSize: 14, color: COLORS.red, textAlign: 'center', marginBottom: 16 },
+  retryBtn: {
+    backgroundColor: COLORS.accent, borderRadius: 12,
+    paddingVertical: 12, paddingHorizontal: 24,
   },
-  errorText: { fontSize: 12, color: COLORS.red },
+  retryBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 
-  emptyCard: {
-    backgroundColor: COLORS.card, borderRadius: 16, padding: 40,
-    alignItems: 'center', borderWidth: 1, borderColor: COLORS.border, marginTop: 12,
-  },
-  emptyIcon: { fontSize: 40, marginBottom: 12 },
-  emptyText: { fontSize: 14, color: COLORS.inkLight, textAlign: 'center' },
   emptySub: { fontSize: 13, color: COLORS.inkLight, padding: 4 },
 
   heroRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },

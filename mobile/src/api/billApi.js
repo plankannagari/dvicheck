@@ -1,8 +1,9 @@
 import apiClient from './apiClient';
 
-export const fetchBills = async (page = 0, size = 20) => {
+export const fetchBills = async (page = 0, size = 20, search = '') => {
   try {
-    const response = await apiClient.get(`/bills?page=${page}&size=${size}`);
+    const query = `?page=${page}&size=${size}` + (search ? `&search=${encodeURIComponent(search)}` : '');
+    const response = await apiClient.get(`/bills${query}`);
     return response.data.data;
   } catch (error) {
     console.error('fetchBills error:', error);

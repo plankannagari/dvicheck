@@ -18,7 +18,7 @@ const useHomeStore = create((set) => ({
     } catch (error) {
       console.error('loadDashboard error:', error);
       set({
-        error: 'Could not load dashboard. Pull to refresh.',
+        error: error.appError?.message || 'Something went wrong.',
         isLoading: false,
       });
     }
