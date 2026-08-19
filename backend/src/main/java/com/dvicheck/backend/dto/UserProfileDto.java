@@ -1,5 +1,6 @@
 package com.dvicheck.backend.dto;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -9,5 +10,6 @@ public record UserProfileDto(
         Integer householdSize,
         String currency,
         Boolean notificationsEnabled,
-        Instant createdAt
+        Instant createdAt,
+        BigDecimal budgetAmount
 ) {}

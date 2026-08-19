@@ -1,9 +1,10 @@
 import { create } from 'zustand';
-import { fetchHomeSummary, fetchRecentBills } from '../api/homeApi';
+import { fetchHomeSummary, fetchRecentBills, fetchMonthlyReport } from '../api/homeApi';
 
-const useHomeStore = create((set) => ({
+const useHomeStore = create((set, get) => ({
   summary: null,
   recentBills: [],
+  monthlyReport: null,
   isLoading: false,
   error: null,
 
@@ -22,11 +23,24 @@ const useHomeStore = create((set) => ({
         isLoading: false,
       });
     }
+    get().loadMonthlyReport();
+  },
+
+  loadMonthlyReport: async () => {
+    try {
+      const monthlyReport = await fetchMonthlyReport();
+      set({ monthlyReport });
+    } catch (error) {
+      // Non-critical — the report is a supplementary card, not core dashboard data,
+      // so a failure here must never surface as a dashboard-level error.
+      console.error('loadMonthlyReport error:', error);
+    }
   },
 
   clearDashboard: () => set({
     summary: null,
     recentBills: [],
+    monthlyReport: null,
     isLoading: false,
     error: null,
   }),

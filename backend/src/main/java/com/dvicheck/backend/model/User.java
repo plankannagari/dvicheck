@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -44,6 +45,9 @@ public class User {
 
     @Column(name = "push_token", length = 200)
     private String pushToken;
+
+    @Column(name = "budget_amount", precision = 10, scale = 2)
+    private BigDecimal budgetAmount;
 
     @PrePersist
     void onCreate() {

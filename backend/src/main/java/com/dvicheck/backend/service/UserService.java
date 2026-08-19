@@ -36,6 +36,9 @@ public class UserService {
         if (req.notificationsEnabled() != null) {
             user.setNotificationsEnabled(req.notificationsEnabled());
         }
+        if (req.budgetAmount() != null) {
+            user.setBudgetAmount(req.budgetAmount());
+        }
 
         User saved = userRepository.save(user);
         return toProfileDto(saved);
@@ -55,7 +58,8 @@ public class UserService {
             user.getHouseholdSize(),
             user.getCurrency(),
             user.getNotificationsEnabled(),
-            user.getCreatedAt()
+            user.getCreatedAt(),
+            user.getBudgetAmount()
         );
     }
 

@@ -36,4 +36,16 @@ public interface BillRepository extends JpaRepository<Bill, UUID> {
         + "ORDER BY b.purchaseDate DESC, b.createdAt DESC")
     Page<Bill> findByUserIdAndStoreNameContainingIgnoreCase(
         @Param("userId") UUID userId, @Param("search") String search, Pageable pageable);
+
+    @Query("SELECT COUNT(b) FROM Bill b WHERE b.user.id = :userId AND b.purchaseDate BETWEEN :from AND :to")
+    long countBillsBetween(@Param("userId") UUID userId, @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    @Query("SELECT COALESCE(SUM(b.avoidableAmount), 0) FROM Bill b WHERE b.user.id = :userId AND b.purchaseDate BETWEEN :from AND :to")
+    BigDecimal sumAvoidableBetween(@Param("userId") UUID userId, @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    @Query("SELECT b.storeName, COALESCE(SUM(b.totalAmount), 0), COUNT(b) FROM Bill b "
+        + "WHERE b.user.id = :userId AND b.purchaseDate BETWEEN :from AND :to "
+        + "GROUP BY b.storeName ORDER BY SUM(b.totalAmount) DESC")
+    List<Object[]> findStoreTotalsBetween(
+        @Param("userId") UUID userId, @Param("from") LocalDate from, @Param("to") LocalDate to, Pageable pageable);
 }

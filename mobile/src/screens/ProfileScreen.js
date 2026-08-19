@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
   SafeAreaView, StatusBar, ScrollView, Switch, Alert, ActivityIndicator,
 } from 'react-native';
 
@@ -29,6 +29,7 @@ export default function ProfileScreen({ navigation }) {
   const [householdSize, setHouseholdSize] = useState(1);
   const [currency, setCurrency] = useState('USD');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [budget, setBudget] = useState('');
   const initialized = useRef(false);
 
   useEffect(() => { loadProfile(); }, []);
@@ -38,19 +39,28 @@ export default function ProfileScreen({ navigation }) {
       setHouseholdSize(profile.householdSize);
       setCurrency(profile.currency);
       setNotificationsEnabled(profile.notificationsEnabled);
+      setBudget(profile.budgetAmount ? profile.budgetAmount.toString() : '');
       initialized.current = true;
     }
   }, [profile]);
+
+  const budgetChanged = budget !== (profile?.budgetAmount?.toString() || '');
 
   const isDirty = !!profile && (
     householdSize !== profile.householdSize
     || currency !== profile.currency
     || notificationsEnabled !== profile.notificationsEnabled
+    || budgetChanged
   );
 
   const handleSave = async () => {
     try {
-      await savePreferences({ householdSize, currency, notificationsEnabled });
+      await savePreferences({
+        householdSize,
+        currency,
+        notificationsEnabled,
+        budgetAmount: budget ? parseFloat(budget) : null,
+      });
       showToast('Preferences saved', 'success');
     } catch (err) {
       showToast('Could not save preferences.', 'error');
@@ -158,6 +168,24 @@ export default function ProfileScreen({ navigation }) {
                 >
                   <Text style={[styles.stepperBtnText, householdSize >= MAX_HOUSEHOLD && styles.stepperBtnTextDisabled]}>+</Text>
                 </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.prefRow}>
+              <View style={styles.prefMeta}>
+                <Text style={styles.prefLabel}>Monthly budget</Text>
+                <Text style={styles.prefSub}>Your spending target for the month</Text>
+              </View>
+              <View style={styles.budgetInputWrap}>
+                <Text style={styles.budgetPrefix}>$</Text>
+                <TextInput
+                  style={styles.budgetInput}
+                  value={budget}
+                  onChangeText={setBudget}
+                  placeholder="Not set"
+                  placeholderTextColor={COLORS.inkFaint}
+                  keyboardType="decimal-pad"
+                />
               </View>
             </View>
 
@@ -270,6 +298,14 @@ const styles = StyleSheet.create({
   stepperBtnText: { fontSize: 16, color: COLORS.ink, fontWeight: '700' },
   stepperBtnTextDisabled: { color: COLORS.inkFaint },
   stepperValue: { fontSize: 15, color: COLORS.ink, fontWeight: '600', minWidth: 18, textAlign: 'center' },
+
+  budgetInputWrap: {
+    flexDirection: 'row', alignItems: 'center', width: 100,
+    borderWidth: 1, borderColor: COLORS.border, borderRadius: 10,
+    backgroundColor: COLORS.bg, paddingHorizontal: 8, paddingVertical: 6,
+  },
+  budgetPrefix: { fontSize: 14, color: COLORS.inkLight, marginRight: 2 },
+  budgetInput: { flex: 1, fontSize: 14, color: COLORS.ink, textAlign: 'right', padding: 0 },
 
   chipsRow: { gap: 8, paddingRight: 4 },
   chip: { borderRadius: 16, paddingHorizontal: 14, paddingVertical: 8 },

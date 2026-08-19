@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { fetchMe, updatePreferences } from '../api/userApi';
 
-const useProfileStore = create((set) => ({
+const useProfileStore = create((set, get) => ({
   profile: null,
   isLoading: false,
   isSaving: false,
@@ -28,6 +28,10 @@ const useProfileStore = create((set) => ({
       set({ error: 'Could not save your preferences.', isSaving: false });
       throw error;
     }
+  },
+
+  setBudget: async (amount) => {
+    await get().savePreferences({ budgetAmount: amount });
   },
 
   clearProfile: () => set({ profile: null, isLoading: false, isSaving: false, error: null }),

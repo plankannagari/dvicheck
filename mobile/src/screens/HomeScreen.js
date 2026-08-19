@@ -12,11 +12,14 @@ import SkeletonList from '../components/SkeletonList';
 
 const fmt = (n) => n != null ? '$' + Number(n).toFixed(2) : '$0.00';
 const fmtDate = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+const fmtPct = (n) => (Number(n ?? 0) >= 0 ? '+' : '') + Number(n ?? 0).toFixed(1) + '%';
+const fmtMonthName = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'long' }) : '';
 const billIcon = (type) => type === 'UTILITY' ? '⚡' : '🛒';
+const budgetColor = (pct) => (pct < 70 ? COLORS.green : pct < 90 ? COLORS.amber : COLORS.red);
 
 export default function HomeScreen({ navigation }) {
   const { user } = useAuthStore();
-  const { summary, recentBills, isLoading, error, loadDashboard } = useHomeStore();
+  const { summary, recentBills, monthlyReport, isLoading, error, loadDashboard } = useHomeStore();
 
   useEffect(() => { loadDashboard(); }, []);
 
@@ -96,6 +99,67 @@ export default function HomeScreen({ navigation }) {
                 <Text style={styles.scanBtnText}>+ Scan a receipt</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Monthly snapshot */}
+            {monthlyReport && (
+              <View style={styles.monthlyCard}>
+                <View style={styles.monthlyHeaderRow}>
+                  <Text style={styles.monthlyLabel}>THIS MONTH</Text>
+                  <Text style={styles.monthlyMonthName}>{fmtMonthName(monthlyReport.monthStart)}</Text>
+                </View>
+
+                <View style={styles.monthlySpendRow}>
+                  <Text style={styles.monthlyTotal}>{fmt(monthlyReport.totalSpent)}</Text>
+                  <Text
+                    style={[
+                      styles.monthlyVsLast,
+                      { color: monthlyReport.vsLastMonthPercent > 0 ? COLORS.red : COLORS.green },
+                    ]}
+                  >
+                    {fmtPct(monthlyReport.vsLastMonthPercent)} vs last month
+                  </Text>
+                </View>
+
+                {monthlyReport.budgetAmount != null ? (
+                  <View style={styles.budgetSection}>
+                    <Text style={styles.budgetLabel}>
+                      {fmt(monthlyReport.totalSpent)} of {fmt(monthlyReport.budgetAmount)} budget
+                    </Text>
+                    {monthlyReport.budgetUsedPercent > 100 ? (
+                      <Text style={styles.overBudgetText}>Over budget</Text>
+                    ) : (
+                      <View style={styles.budgetTrack}>
+                        <View
+                          style={[
+                            styles.budgetFill,
+                            {
+                              width: `${Math.min(monthlyReport.budgetUsedPercent, 100)}%`,
+                              backgroundColor: budgetColor(monthlyReport.budgetUsedPercent),
+                            },
+                          ]}
+                        />
+                      </View>
+                    )}
+                  </View>
+                ) : (
+                  <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.8}>
+                    <Text style={styles.setBudgetLink}>Set a monthly budget</Text>
+                  </TouchableOpacity>
+                )}
+
+                {monthlyReport.topStores && monthlyReport.topStores.length > 0 && (
+                  <View style={styles.topStoresRow}>
+                    {monthlyReport.topStores.slice(0, 3).map((store, i) => (
+                      <View key={store.storeName + i} style={styles.storeChip}>
+                        <Text style={styles.storeChipText}>
+                          {store.storeName} {fmt(store.total)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
 
             {/* Quick stats */}
             <View style={styles.statsRow}>
@@ -199,6 +263,28 @@ const styles = StyleSheet.create({
     paddingVertical:12, paddingHorizontal:20, alignSelf:'flex-start',
   },
   scanBtnText:{ color:'#fff', fontSize:14, fontWeight:'600' },
+  monthlyCard:{
+    marginHorizontal:16, marginBottom:16,
+    backgroundColor:COLORS.card, borderRadius:16,
+    padding:18, borderWidth:1, borderColor:COLORS.border,
+  },
+  monthlyHeaderRow:{
+    flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:12,
+  },
+  monthlyLabel:{ fontSize:10, color:COLORS.inkLight, letterSpacing:2, textTransform:'uppercase' },
+  monthlyMonthName:{ fontSize:13, color:COLORS.ink, fontWeight:'600' },
+  monthlySpendRow:{ marginBottom:16 },
+  monthlyTotal:{ fontSize:30, color:COLORS.ink, fontWeight:'300', letterSpacing:-1, marginBottom:4 },
+  monthlyVsLast:{ fontSize:12, fontWeight:'600' },
+  budgetSection:{ marginBottom:16 },
+  budgetLabel:{ fontSize:12, color:COLORS.inkLight, marginBottom:8 },
+  budgetTrack:{ height:8, borderRadius:4, backgroundColor:COLORS.bg, overflow:'hidden' },
+  budgetFill:{ height:'100%', borderRadius:4 },
+  overBudgetText:{ fontSize:13, color:COLORS.red, fontWeight:'700' },
+  setBudgetLink:{ fontSize:12, color:COLORS.accent, fontWeight:'600', marginBottom:16 },
+  topStoresRow:{ flexDirection:'row', flexWrap:'wrap', gap:8 },
+  storeChip:{ backgroundColor:COLORS.bg, borderRadius:12, paddingHorizontal:10, paddingVertical:6 },
+  storeChipText:{ fontSize:11, color:COLORS.ink, fontWeight:'600' },
   statsRow:{
     flexDirection:'row', gap:10,
     marginHorizontal:16, marginBottom:16,
