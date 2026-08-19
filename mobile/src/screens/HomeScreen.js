@@ -19,7 +19,7 @@ const budgetColor = (pct) => (pct < 70 ? COLORS.green : pct < 90 ? COLORS.amber 
 
 export default function HomeScreen({ navigation }) {
   const { user } = useAuthStore();
-  const { summary, recentBills, monthlyReport, isLoading, error, loadDashboard } = useHomeStore();
+  const { summary, recentBills, monthlyReport, trends, isLoading, error, loadDashboard } = useHomeStore();
 
   useEffect(() => { loadDashboard(); }, []);
 
@@ -161,6 +161,48 @@ export default function HomeScreen({ navigation }) {
               </View>
             )}
 
+            {/* Spending trend */}
+            {trends && trends.weeks && trends.weeks.length > 0 && (
+              <View style={styles.trendCard}>
+                <View style={styles.trendHeaderRow}>
+                  <Text style={styles.trendLabel}>SPENDING TREND</Text>
+                  <Text style={styles.trendAvg}>8-week average: {fmt(trends.avgWeeklySpend)}</Text>
+                </View>
+
+                <View style={styles.trendChart}>
+                  {trends.weeks.map((week, i) => {
+                    const maxTotal = Number(trends.maxWeekTotal) || 1;
+                    const barHeight = Math.max((Number(week.total) / maxTotal) * 72, 2);
+                    const isCurrentWeek = i === 7;
+                    return (
+                      <View key={week.weekStart ?? i} style={styles.trendColumn}>
+                        <View style={styles.trendBarArea}>
+                          <View
+                            style={[
+                              styles.trendBar,
+                              {
+                                height: barHeight,
+                                backgroundColor: isCurrentWeek ? COLORS.accent : COLORS.border,
+                              },
+                            ]}
+                          />
+                        </View>
+                        <Text style={styles.trendBarLabel}>
+                          {i % 2 === 0 ? week.label : ''}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+
+                {Number(trends.weeks[7]?.total) > 0 && (
+                  <Text style={styles.trendThisWeek}>
+                    This week: {fmt(trends.weeks[7].total)}
+                  </Text>
+                )}
+              </View>
+            )}
+
             {/* Quick stats */}
             <View style={styles.statsRow}>
               {[
@@ -285,6 +327,22 @@ const styles = StyleSheet.create({
   topStoresRow:{ flexDirection:'row', flexWrap:'wrap', gap:8 },
   storeChip:{ backgroundColor:COLORS.bg, borderRadius:12, paddingHorizontal:10, paddingVertical:6 },
   storeChipText:{ fontSize:11, color:COLORS.ink, fontWeight:'600' },
+  trendCard:{
+    marginHorizontal:16, marginBottom:16,
+    backgroundColor:COLORS.card, borderRadius:16,
+    padding:18, borderWidth:1, borderColor:COLORS.border,
+  },
+  trendHeaderRow:{
+    flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:14,
+  },
+  trendLabel:{ fontSize:9, color:COLORS.inkLight, letterSpacing:2, textTransform:'uppercase' },
+  trendAvg:{ fontSize:11, color:COLORS.inkLight },
+  trendChart:{ flexDirection:'row' },
+  trendColumn:{ flex:1, alignItems:'center' },
+  trendBarArea:{ height:80, width:'100%', justifyContent:'flex-end', alignItems:'center' },
+  trendBar:{ width:'60%', borderRadius:2 },
+  trendBarLabel:{ fontSize:8, color:COLORS.inkFaint, textAlign:'center', marginTop:4 },
+  trendThisWeek:{ fontSize:13, color:COLORS.accent, fontWeight:'600', marginTop:12, textAlign:'center' },
   statsRow:{
     flexDirection:'row', gap:10,
     marginHorizontal:16, marginBottom:16,

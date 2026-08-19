@@ -31,3 +31,13 @@ export const fetchMonthlyReport = async () => {
     throw error;
   }
 };
+
+export const fetchTrends = async () => {
+  try {
+    const response = await apiClient.get('/reports/trends');
+    return response.data.data;
+  } catch (error) {
+    console.error('fetchTrends error:', error);
+    throw error;
+  }
+};

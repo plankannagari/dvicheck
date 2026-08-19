@@ -2,7 +2,9 @@ package com.dvicheck.backend.controller;
 
 import com.dvicheck.backend.dto.ApiResponse;
 import com.dvicheck.backend.dto.MonthlyReportDto;
+import com.dvicheck.backend.dto.SpendingTrendsDto;
 import com.dvicheck.backend.service.MonthlyReportService;
+import com.dvicheck.backend.service.SpendingTrendsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -18,6 +20,7 @@ import java.util.UUID;
 public class MonthlyReportController {
 
     private final MonthlyReportService monthlyReportService;
+    private final SpendingTrendsService spendingTrendsService;
 
     private UUID currentUserId() {
         String principal = SecurityContextHolder.getContext()
@@ -28,5 +31,10 @@ public class MonthlyReportController {
     @GetMapping("/monthly")
     public ResponseEntity<ApiResponse<MonthlyReportDto>> getMonthlyReport() {
         return ResponseEntity.ok(ApiResponse.ok(monthlyReportService.getMonthlyReport(currentUserId())));
+    }
+
+    @GetMapping("/trends")
+    public ResponseEntity<ApiResponse<SpendingTrendsDto>> getTrends() {
+        return ResponseEntity.ok(ApiResponse.ok(spendingTrendsService.getTrends(currentUserId())));
     }
 }

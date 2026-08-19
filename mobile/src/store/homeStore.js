@@ -1,10 +1,11 @@
 import { create } from 'zustand';
-import { fetchHomeSummary, fetchRecentBills, fetchMonthlyReport } from '../api/homeApi';
+import { fetchHomeSummary, fetchRecentBills, fetchMonthlyReport, fetchTrends } from '../api/homeApi';
 
 const useHomeStore = create((set, get) => ({
   summary: null,
   recentBills: [],
   monthlyReport: null,
+  trends: null,
   isLoading: false,
   error: null,
 
@@ -24,6 +25,7 @@ const useHomeStore = create((set, get) => ({
       });
     }
     get().loadMonthlyReport();
+    get().loadTrends(); // fire and forget after existing calls
   },
 
   loadMonthlyReport: async () => {
@@ -37,10 +39,22 @@ const useHomeStore = create((set, get) => ({
     }
   },
 
+  loadTrends: async () => {
+    try {
+      const trends = await fetchTrends();
+      set({ trends });
+    } catch (error) {
+      // Non-critical — same reasoning as loadMonthlyReport, sparkline data shouldn't
+      // block or error out the dashboard.
+      console.warn('loadTrends error:', error);
+    }
+  },
+
   clearDashboard: () => set({
     summary: null,
     recentBills: [],
     monthlyReport: null,
+    trends: null,
     isLoading: false,
     error: null,
   }),

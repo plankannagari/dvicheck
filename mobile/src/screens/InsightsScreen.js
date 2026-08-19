@@ -151,6 +151,56 @@ export default function InsightsScreen() {
               </View>
             )}
 
+            {/* Category mix */}
+            {(() => {
+              const totalSpent = Number(insights.totalSpent ?? 0);
+              const categoriesWithSpend = CATEGORY_ORDER.filter(
+                (cat) => Number(insights.spendByCategory?.[cat] ?? 0) > 0
+              );
+              if (categoriesWithSpend.length === 0 || totalSpent <= 0) {
+                return null;
+              }
+              return (
+                <>
+                  <Text style={styles.sectionLabel}>Category mix this week</Text>
+                  <View style={styles.mixCard}>
+                    <View style={styles.mixBarTrack}>
+                      {categoriesWithSpend.map((cat) => {
+                        const amount = Number(insights.spendByCategory[cat]);
+                        const pct = (amount / totalSpent) * 100;
+                        // Segments under 5% aren't rendered — too thin to show — but
+                        // still appear in the legend below.
+                        if (pct < 5) return null;
+                        const meta = CATEGORY_META[cat];
+                        return (
+                          <View
+                            key={cat}
+                            style={{ width: `${pct}%`, height: '100%', backgroundColor: meta.bar }}
+                          />
+                        );
+                      })}
+                    </View>
+
+                    <View style={styles.mixLegend}>
+                      {categoriesWithSpend.map((cat) => {
+                        const amount = Number(insights.spendByCategory[cat]);
+                        const pct = (amount / totalSpent) * 100;
+                        const meta = CATEGORY_META[cat];
+                        return (
+                          <View key={cat} style={styles.mixLegendItem}>
+                            <View style={[styles.mixLegendDot, { backgroundColor: meta.bar }]} />
+                            <Text style={styles.mixLegendText}>
+                              {meta.label}  {fmt(amount)}  {Math.round(pct)}%
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+                </>
+              );
+            })()}
+
             {/* Top items */}
             <Text style={styles.sectionLabel}>Top items this week</Text>
             <View style={styles.itemsCard}>
@@ -253,6 +303,19 @@ const styles = StyleSheet.create({
   coachText: { fontSize: 14, color: COLORS.ink, lineHeight: 22 },
   coachDivider: { height: 1, backgroundColor: COLORS.border, marginVertical: 12 },
   coachFooter: { fontSize: 11, color: COLORS.inkLight, fontStyle: 'italic' },
+
+  mixCard: {
+    backgroundColor: COLORS.card, borderRadius: 16, padding: 16,
+    borderWidth: 1, borderColor: COLORS.border, marginBottom: 20,
+  },
+  mixBarTrack: {
+    flexDirection: 'row', height: 12, borderRadius: 6,
+    overflow: 'hidden', backgroundColor: COLORS.bg, marginBottom: 14,
+  },
+  mixLegend: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  mixLegendItem: { flexDirection: 'row', alignItems: 'center', width: '47%', gap: 6 },
+  mixLegendDot: { width: 8, height: 8, borderRadius: 4 },
+  mixLegendText: { fontSize: 12, color: COLORS.ink },
 
   itemsCard: {
     backgroundColor: COLORS.card, borderRadius: 16, overflow: 'hidden',
