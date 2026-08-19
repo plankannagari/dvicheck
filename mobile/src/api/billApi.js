@@ -20,3 +20,13 @@ export const fetchBillDetail = async (billId) => {
     throw error;
   }
 };
+
+export const updateBill = async (billId, updates) => {
+  try {
+    const response = await apiClient.patch(`/bills/${billId}`, updates);
+    return response.data.data;
+  } catch (error) {
+    console.error('updateBill error:', error);
+    throw error;
+  }
+};

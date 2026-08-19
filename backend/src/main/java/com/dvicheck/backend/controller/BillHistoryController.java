@@ -3,10 +3,13 @@ package com.dvicheck.backend.controller;
 import com.dvicheck.backend.dto.ApiResponse;
 import com.dvicheck.backend.dto.BillDetailResponse;
 import com.dvicheck.backend.dto.RecentBillDto;
+import com.dvicheck.backend.dto.UpdateBillRequest;
 import com.dvicheck.backend.exception.DvicheckException;
 import com.dvicheck.backend.model.Bill;
+import com.dvicheck.backend.model.BillType;
 import com.dvicheck.backend.model.LineItem;
 import com.dvicheck.backend.repository.BillRepository;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
@@ -63,6 +66,36 @@ public class BillHistoryController {
         }
 
         return ResponseEntity.ok(ApiResponse.ok(toDetailResponse(bill)));
+    }
+
+    // Overrides the class-level readOnly=true — this is the one write in this controller.
+    @Transactional
+    @PatchMapping("/{billId}")
+    public ResponseEntity<ApiResponse<BillDetailResponse>> updateBill(
+            @PathVariable UUID billId, @Valid @RequestBody UpdateBillRequest request) {
+        Bill bill = billRepository.findById(billId)
+            .orElseThrow(() -> DvicheckException.notFound("Bill"));
+
+        if (!bill.getUser().getId().equals(currentUserId())) {
+            throw DvicheckException.unauthorized();
+        }
+
+        if (request.storeName() != null && !request.storeName().isBlank()) {
+            bill.setStoreName(request.storeName().trim());
+        }
+        if (request.billType() != null && !request.billType().isBlank()) {
+            try {
+                bill.setBillType(BillType.valueOf(request.billType().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw DvicheckException.badRequest("Invalid bill type");
+            }
+        }
+        if (request.purchaseDate() != null) {
+            bill.setPurchaseDate(request.purchaseDate());
+        }
+
+        Bill saved = billRepository.save(bill);
+        return ResponseEntity.ok(ApiResponse.ok(toDetailResponse(saved)));
     }
 
     private RecentBillDto toRecentBillDto(Bill bill) {

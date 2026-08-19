@@ -54,16 +54,25 @@ export default function ProfileScreen({ navigation }) {
   );
 
   const handleSave = async () => {
+    // parseFloat("") -> NaN, and JSON.stringify serialises NaN as null — which the
+    // backend's partial-update pattern reads as "field omitted, leave unchanged."
+    // Without this check, invalid input silently no-ops instead of saving or erroring.
+    const budgetAmount = budget ? parseFloat(budget) : null;
+    if (budget && Number.isNaN(budgetAmount)) {
+      showToast('Enter a valid budget amount.', 'error');
+      return;
+    }
+
     try {
       await savePreferences({
         householdSize,
         currency,
         notificationsEnabled,
-        budgetAmount: budget ? parseFloat(budget) : null,
+        budgetAmount,
       });
       showToast('Preferences saved', 'success');
     } catch (err) {
-      showToast('Could not save preferences.', 'error');
+      showToast(err.appError?.message || 'Could not save preferences.', 'error');
     }
   };
 

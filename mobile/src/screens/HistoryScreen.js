@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  SafeAreaView, StatusBar, FlatList, RefreshControl, ActivityIndicator,
+  SafeAreaView, StatusBar, FlatList, RefreshControl, ActivityIndicator, Modal,
 } from 'react-native';
 
 import { COLORS } from '../constants';
 import useHistoryStore from '../store/historyStore';
+import useToastStore from '../store/toastStore';
 import EmptyState from '../components/EmptyState';
+
+// RESTAURANT was in the original spec but isn't a valid BillType — the Java enum and the
+// bills.bill_type DB CHECK constraint only allow these three.
+const BILL_TYPES = ['GROCERY', 'UTILITY', 'OTHER'];
 
 const CATEGORY_ORDER = ['ESSENTIAL', 'REDUCIBLE', 'AVOIDABLE', 'DUPLICATE'];
 const CATEGORY_META = {
@@ -41,10 +46,15 @@ function SkeletonRow() {
 export default function HistoryScreen() {
   const {
     bills, activeBill, isLoading, isLoadingDetail, hasMore, error,
-    loadBills, loadBillDetail, clearActiveBill,
+    loadBills, loadBillDetail, clearActiveBill, editBill,
   } = useHistoryStore();
+  const { showToast } = useToastStore();
 
   const [search, setSearch] = useState('');
+  const [editingBill, setEditingBill] = useState(null);
+  const [editStoreName, setEditStoreName] = useState('');
+  const [editBillType, setEditBillType] = useState('GROCERY');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   useEffect(() => { loadBills(true); }, []);
 
@@ -58,6 +68,25 @@ export default function HistoryScreen() {
   const handleEndReached = () => {
     if (hasMore && !isLoading) {
       loadBills(false);
+    }
+  };
+
+  const handleLongPressBill = (bill) => {
+    setEditingBill(bill);
+    setEditStoreName(bill.storeName);
+    setEditBillType(bill.billType);
+  };
+
+  const handleSaveEdit = async () => {
+    setIsSavingEdit(true);
+    try {
+      await editBill(editingBill.id, { storeName: editStoreName, billType: editBillType });
+      setEditingBill(null);
+      showToast('Bill updated', 'success');
+    } catch (err) {
+      showToast(err.appError?.message || 'Could not update bill.', 'error');
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -228,6 +257,7 @@ export default function HistoryScreen() {
               style={styles.billRow}
               activeOpacity={0.8}
               onPress={() => loadBillDetail(item.id)}
+              onLongPress={() => handleLongPressBill(item)}
             >
               <View style={styles.billIconBox}>
                 <Text style={styles.billIconText}>{billIcon(item.billType)}</Text>
@@ -242,6 +272,7 @@ export default function HistoryScreen() {
                   <Text style={styles.billAvoidable}>-{fmt(item.avoidableAmount)}</Text>
                 )}
               </View>
+              <Text style={styles.editHint}>✏️</Text>
             </TouchableOpacity>
           )}
           ListFooterComponent={
@@ -251,6 +282,65 @@ export default function HistoryScreen() {
           }
         />
       )}
+
+      <Modal
+        visible={!!editingBill}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEditingBill(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.editSheet}>
+            <View style={styles.editHeader}>
+              <Text style={styles.editTitle}>Edit Bill</Text>
+              <TouchableOpacity onPress={() => setEditingBill(null)} activeOpacity={0.7}>
+                <Text style={styles.editCloseBtn}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.editLabel}>Store name</Text>
+            <TextInput
+              style={styles.editInput}
+              value={editStoreName}
+              onChangeText={setEditStoreName}
+              placeholder="Store name"
+              placeholderTextColor={COLORS.inkFaint}
+            />
+
+            <Text style={styles.editLabel}>Bill type</Text>
+            <View style={styles.editChipsRow}>
+              {BILL_TYPES.map((type) => {
+                const selected = type === editBillType;
+                return (
+                  <TouchableOpacity
+                    key={type}
+                    style={[styles.editChip, selected && styles.editChipSelected]}
+                    onPress={() => setEditBillType(type)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.editChipText, selected && styles.editChipTextSelected]}>
+                      {type}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity
+              style={styles.editSaveBtn}
+              onPress={handleSaveEdit}
+              activeOpacity={0.8}
+              disabled={isSavingEdit}
+            >
+              {isSavingEdit ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.editSaveBtnText}>Save</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -297,7 +387,37 @@ const styles = StyleSheet.create({
   billAmounts: { alignItems: 'flex-end' },
   billTotal: { fontSize: 15, color: COLORS.ink, fontWeight: '600' },
   billAvoidable: { fontSize: 11, color: COLORS.red, marginTop: 2 },
+  editHint: { fontSize: 11, opacity: 0.35, marginLeft: 8 },
   footerSpinner: { marginVertical: 16 },
+
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end',
+  },
+  editSheet: {
+    backgroundColor: COLORS.card, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: 24, width: '100%',
+  },
+  editHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20,
+  },
+  editTitle: { fontSize: 17, color: COLORS.ink, fontWeight: '600' },
+  editCloseBtn: { fontSize: 18, color: COLORS.inkLight, padding: 4 },
+  editLabel: { fontSize: 11, color: COLORS.inkLight, marginBottom: 8, marginTop: 12 },
+  editInput: {
+    backgroundColor: COLORS.bg, borderRadius: 12,
+    borderWidth: 1, borderColor: COLORS.border,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: COLORS.ink,
+  },
+  editChipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  editChip: { borderRadius: 16, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: COLORS.border },
+  editChipSelected: { backgroundColor: COLORS.accent },
+  editChipText: { fontSize: 12, fontWeight: '600', color: COLORS.inkLight },
+  editChipTextSelected: { color: '#fff' },
+  editSaveBtn: {
+    backgroundColor: COLORS.accent, borderRadius: 12,
+    paddingVertical: 14, alignItems: 'center', marginTop: 24,
+  },
+  editSaveBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 
   skeletonFill: { backgroundColor: COLORS.border },
 

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { fetchBills, fetchBillDetail } from '../api/billApi';
+import { fetchBills, fetchBillDetail, updateBill } from '../api/billApi';
 
 const PAGE_SIZE = 20;
 
@@ -46,6 +46,26 @@ const useHistoryStore = create((set, get) => ({
     } catch (error) {
       console.error('loadBillDetail error:', error);
       set({ error: 'Could not load this bill.', isLoadingDetail: false });
+    }
+  },
+
+  editBill: async (billId, updates) => {
+    try {
+      const updatedBill = await updateBill(billId, updates);
+
+      set((state) => ({
+        bills: state.bills.map((b) => (b.id === billId ? { ...b, ...updates } : b)),
+      }));
+
+      if (get().activeBill && get().activeBill.id === billId) {
+        set({ activeBill: updatedBill });
+      }
+
+      return updatedBill;
+    } catch (error) {
+      console.error('editBill error:', error);
+      set({ error: error.appError?.message || 'Something went wrong.' });
+      throw error;
     }
   },
 
