@@ -13,6 +13,7 @@ import okhttp3.Response;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -29,19 +30,25 @@ public class NotificationService {
     private final OkHttpClient httpClient = new OkHttpClient();
 
     public void sendNotification(String pushToken, String title, String body) {
+        sendNotification(pushToken, title, body, Map.of());
+    }
+
+    public void sendNotification(String pushToken, String title, String body, Map<String, Object> data) {
         if (pushToken == null || pushToken.isBlank()) {
             log.debug("Skipping push notification — no push token");
             return;
         }
 
         try {
-            Map<String, String> payload = Map.of(
-                "to", pushToken,
-                "title", title,
-                "body", body,
-                "sound", "default",
-                "priority", "normal"
-            );
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("to", pushToken);
+            payload.put("title", title);
+            payload.put("body", body);
+            payload.put("sound", "default");
+            payload.put("priority", "normal");
+            if (data != null && !data.isEmpty()) {
+                payload.put("data", data);
+            }
             String json = objectMapper.writeValueAsString(payload);
 
             Request request = new Request.Builder()

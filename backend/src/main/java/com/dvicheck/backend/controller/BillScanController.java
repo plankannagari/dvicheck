@@ -9,6 +9,7 @@ import com.dvicheck.backend.model.ItemCategory;
 import com.dvicheck.backend.model.LineItem;
 import com.dvicheck.backend.model.User;
 import com.dvicheck.backend.repository.BillRepository;
+import com.dvicheck.backend.service.BudgetAlertService;
 import com.dvicheck.backend.service.ClaudeItemAnalyser;
 import com.dvicheck.backend.service.GeminiItemAnalyser;
 import com.dvicheck.backend.service.GeminiReceiptParser;
@@ -54,6 +55,7 @@ BillScanController {
     private final BillRepository billRepository;
     private final UserService userService;
     private final PantryService pantryService;
+    private final BudgetAlertService budgetAlertService;
 
     @Value("${app.ai.use-gemini-analyser:false}")
     private boolean useGeminiAnalyser;
@@ -144,6 +146,10 @@ BillScanController {
 
         Bill saved = billRepository.save(bill);
         pantryService.updateFromBill(currentUserId(), saved);
+        // Fire-and-forget: save() above already committed its own transaction (this
+        // controller has no @Transactional of its own), so the bill row is guaranteed
+        // durable before this runs. checkAndSendAlerts() never throws outward.
+        budgetAlertService.checkAndSendAlerts(currentUserId());
         return ResponseEntity.ok(ApiResponse.ok(toResponse(saved)));
     }
 
