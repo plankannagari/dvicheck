@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { COLORS } from '../constants';
 import { uploadReceiptImage } from '../api/scanApi';
+import { submitFeedback } from '../api/feedbackApi';
 import useToastStore from '../store/toastStore';
 import useHomeStore from '../store/homeStore';
 import useHistoryStore from '../store/historyStore';
@@ -33,11 +34,26 @@ const fmtDate = (d) => d
   ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   : '';
 
-function ItemRow({ item, isLast, manual }) {
+function ItemRow({ item, isLast, manual, feedbackValue, onFeedback }) {
   const meta = CATEGORY_META[item.category] || CATEGORY_META.ESSENTIAL;
   const showCategoryLabel = item.category && item.category !== 'ESSENTIAL';
   const showSuggestion = (item.category === 'REDUCIBLE' || item.category === 'AVOIDABLE') && !!item.suggestion;
   const showSavingBadge = Number(item.savingEstimate) > 0;
+  const showFeedback = item.category === 'REDUCIBLE' || item.category === 'AVOIDABLE';
+
+  const [showThanks, setShowThanks] = useState(false);
+  const thanksTimerRef = useRef(null);
+
+  useEffect(() => () => {
+    if (thanksTimerRef.current) clearTimeout(thanksTimerRef.current);
+  }, []);
+
+  const handleTap = (value) => {
+    onFeedback(item.id, value);
+    setShowThanks(true);
+    if (thanksTimerRef.current) clearTimeout(thanksTimerRef.current);
+    thanksTimerRef.current = setTimeout(() => setShowThanks(false), 1500);
+  };
 
   return (
     <View style={[styles.itemRow, !isLast && styles.itemBorder]}>
@@ -58,6 +74,39 @@ function ItemRow({ item, isLast, manual }) {
         </View>
         {showSuggestion && (
           <Text style={styles.itemSuggestion} numberOfLines={2}>{item.suggestion}</Text>
+        )}
+        {showFeedback && (
+          <View style={styles.feedbackRow}>
+            {showThanks ? (
+              <Text style={styles.feedbackThanks}>Thanks!</Text>
+            ) : (
+              <>
+                <Text style={styles.feedbackLabel}>Was this helpful?</Text>
+                <TouchableOpacity
+                  style={[
+                    styles.feedbackBtn,
+                    feedbackValue === 'HELPFUL' && styles.feedbackBtnUpSelected,
+                    feedbackValue === 'UNHELPFUL' && styles.feedbackBtnGreyed,
+                  ]}
+                  onPress={() => handleTap('HELPFUL')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.feedbackBtnIcon}>👍</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.feedbackBtn,
+                    feedbackValue === 'UNHELPFUL' && styles.feedbackBtnDownSelected,
+                    feedbackValue === 'HELPFUL' && styles.feedbackBtnGreyed,
+                  ]}
+                  onPress={() => handleTap('UNHELPFUL')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.feedbackBtnIcon}>👎</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
         )}
       </View>
       <View style={styles.itemRightCol}>
@@ -83,6 +132,7 @@ export default function ScanScreen({ navigation }) {
   const [manualItems, setManualItems] = useState([]);
   const [manualName, setManualName] = useState('');
   const [manualPrice, setManualPrice] = useState('');
+  const [feedbackState, setFeedbackState] = useState({});
   const {
     visible: toastVisible, message: toastMessage, type: toastType, showToast, hideToast,
   } = useToastStore();
@@ -116,7 +166,7 @@ export default function ScanScreen({ navigation }) {
       setPhase('result');
     } catch (err) {
       console.error('scan error:', err);
-      const message = err.response?.data?.message
+      const message = err.appError?.message
         || 'Could not read this receipt. Try again with better lighting.';
       showToast(message, 'error');
       setPhase('camera');
@@ -155,7 +205,20 @@ export default function ScanScreen({ navigation }) {
   const reset = () => {
     setScanResult(null);
     setManualItems([]);
+    setFeedbackState({});
     setPhase('camera');
+  };
+
+  const handleFeedback = async (lineItemId, feedback) => {
+    const previous = feedbackState[lineItemId] ?? null;
+    setFeedbackState((prev) => ({ ...prev, [lineItemId]: feedback }));
+    try {
+      await submitFeedback(lineItemId, feedback);
+    } catch (err) {
+      console.error('submitFeedback error:', err);
+      setFeedbackState((prev) => ({ ...prev, [lineItemId]: previous }));
+      showToast('Could not save feedback', 'error');
+    }
   };
 
   const addManualItem = () => {
@@ -238,7 +301,13 @@ export default function ScanScreen({ navigation }) {
           {lineItems.length > 0 && (
             <View style={styles.itemsCard}>
               {lineItems.map((item, i) => (
-                <ItemRow key={item.id ?? i} item={item} isLast={i === lineItems.length - 1} />
+                <ItemRow
+                  key={item.id ?? i}
+                  item={item}
+                  isLast={i === lineItems.length - 1}
+                  feedbackValue={feedbackState[item.id] ?? null}
+                  onFeedback={handleFeedback}
+                />
               ))}
             </View>
           )}
@@ -272,7 +341,14 @@ export default function ScanScreen({ navigation }) {
             {manualItems.length > 0 && (
               <View style={styles.itemsCard}>
                 {manualItems.map((item, i) => (
-                  <ItemRow key={item.id} item={item} isLast={i === manualItems.length - 1} manual />
+                  <ItemRow
+                    key={item.id}
+                    item={item}
+                    isLast={i === manualItems.length - 1}
+                    manual
+                    feedbackValue={feedbackState[item.id] ?? null}
+                    onFeedback={handleFeedback}
+                  />
                 ))}
               </View>
             )}
@@ -476,6 +552,18 @@ const styles = StyleSheet.create({
   itemNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   itemName: { fontSize: 13, color: COLORS.ink, flexShrink: 1 },
   itemSuggestion: { fontSize: 12, fontStyle: 'italic', color: COLORS.inkLight, marginTop: 3 },
+  feedbackRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  feedbackLabel: { fontSize: 11, color: COLORS.inkLight },
+  feedbackBtn: {
+    width: 26, height: 26, borderRadius: 13,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: COLORS.bg, borderWidth: 1, borderColor: COLORS.border,
+  },
+  feedbackBtnIcon: { fontSize: 13 },
+  feedbackBtnUpSelected: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
+  feedbackBtnDownSelected: { backgroundColor: COLORS.red, borderColor: COLORS.red },
+  feedbackBtnGreyed: { opacity: 0.35 },
+  feedbackThanks: { fontSize: 11, color: COLORS.green, fontWeight: '600' },
   itemRightCol: { alignItems: 'flex-end', paddingTop: 2 },
   itemPrice: { fontSize: 13, color: COLORS.ink, fontWeight: '600' },
   savingBadge: {

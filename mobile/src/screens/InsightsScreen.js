@@ -27,7 +27,7 @@ const fmtDateRange = (start, end) => {
   return `${s} — ${e}`;
 };
 
-export default function InsightsScreen() {
+export default function InsightsScreen({ navigation }) {
   const { insights, isLoading, error, loadInsights } = useInsightsStore();
 
   useEffect(() => { loadInsights(); }, []);
@@ -40,10 +40,15 @@ export default function InsightsScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
       <View style={styles.header}>
-        <Text style={styles.heading}>Weekly Insights</Text>
-        {insights && (
-          <Text style={styles.dateRange}>{fmtDateRange(insights.weekStart, insights.weekEnd)}</Text>
-        )}
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBackBtn} activeOpacity={0.7}>
+          <Text style={styles.headerBackArrow}>←</Text>
+        </TouchableOpacity>
+        <View style={styles.headerTitleCol}>
+          <Text style={styles.heading}>Weekly Insights</Text>
+          {insights && (
+            <Text style={styles.dateRange}>{fmtDateRange(insights.weekStart, insights.weekEnd)}</Text>
+          )}
+        </View>
       </View>
 
       <ScrollView
@@ -236,7 +241,13 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 20 },
 
-  header: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 8 },
+  header: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8,
+  },
+  headerBackBtn: { width: 32, height: 32, justifyContent: 'center', marginRight: 8 },
+  headerBackArrow: { fontSize: 22, color: COLORS.ink },
+  headerTitleCol: { flex: 1 },
   heading: { fontSize: 22, color: COLORS.ink, fontWeight: '600' },
   dateRange: { fontSize: 12, color: COLORS.inkLight, marginTop: 4 },
 

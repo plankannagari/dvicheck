@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   SafeAreaView, StatusBar, FlatList, RefreshControl, ActivityIndicator, Modal,
+  KeyboardAvoidingView, Platform, TouchableWithoutFeedback,
 } from 'react-native';
 
 import { COLORS } from '../constants';
 import useHistoryStore from '../store/historyStore';
 import useToastStore from '../store/toastStore';
 import EmptyState from '../components/EmptyState';
+import { submitFeedback } from '../api/feedbackApi';
 
 // RESTAURANT was in the original spec but isn't a valid BillType — the Java enum and the
 // bills.bill_type DB CHECK constraint only allow these three.
@@ -55,6 +57,8 @@ export default function HistoryScreen() {
   const [editStoreName, setEditStoreName] = useState('');
   const [editBillType, setEditBillType] = useState('GROCERY');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [feedbackState, setFeedbackState] = useState({});
+  const [thankYouItems, setThankYouItems] = useState({});
 
   useEffect(() => { loadBills(true); }, []);
 
@@ -88,6 +92,26 @@ export default function HistoryScreen() {
     } finally {
       setIsSavingEdit(false);
     }
+  };
+
+  const handleFeedback = async (lineItemId, feedback) => {
+    const previous = feedbackState[lineItemId] ?? null;
+    setFeedbackState((prev) => ({ ...prev, [lineItemId]: feedback }));
+    try {
+      await submitFeedback(lineItemId, feedback);
+    } catch (err) {
+      console.error('submitFeedback error:', err);
+      setFeedbackState((prev) => ({ ...prev, [lineItemId]: previous }));
+      showToast('Could not save feedback', 'error');
+    }
+  };
+
+  const handleFeedbackTap = (lineItemId, feedback) => {
+    handleFeedback(lineItemId, feedback);
+    setThankYouItems((prev) => ({ ...prev, [lineItemId]: true }));
+    setTimeout(() => {
+      setThankYouItems((prev) => ({ ...prev, [lineItemId]: false }));
+    }, 1500);
   };
 
   if (activeBill || isLoadingDetail) {
@@ -159,6 +183,8 @@ export default function HistoryScreen() {
               const meta = CATEGORY_META[item.category] || CATEGORY_META.ESSENTIAL;
               const showSuggestion = (item.category === 'REDUCIBLE' || item.category === 'AVOIDABLE') && !!item.suggestion;
               const showSaving = Number(item.savingEstimate) > 0;
+              const showThanks = !!thankYouItems[item.id];
+              const feedbackValue = feedbackState[item.id] ?? null;
               return (
                 <View style={styles.itemRow}>
                   <View style={[styles.itemDot, { backgroundColor: meta.dot }]} />
@@ -166,6 +192,41 @@ export default function HistoryScreen() {
                     <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
                     {showSuggestion && (
                       <Text style={styles.itemSuggestion} numberOfLines={2}>{item.suggestion}</Text>
+                    )}
+                    {showSuggestion && (
+                      // Same feedback-row layout as ScanScreen's ItemRow — could be
+                      // extracted into a shared component if a third screen needs it.
+                      <View style={styles.feedbackRow}>
+                        {showThanks ? (
+                          <Text style={styles.feedbackThanks}>Thanks!</Text>
+                        ) : (
+                          <>
+                            <Text style={styles.feedbackLabel}>Was this helpful?</Text>
+                            <TouchableOpacity
+                              style={[
+                                styles.feedbackBtn,
+                                feedbackValue === 'HELPFUL' && styles.feedbackBtnUpSelected,
+                                feedbackValue === 'UNHELPFUL' && styles.feedbackBtnGreyed,
+                              ]}
+                              onPress={() => handleFeedbackTap(item.id, 'HELPFUL')}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={styles.feedbackBtnIcon}>👍</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[
+                                styles.feedbackBtn,
+                                feedbackValue === 'UNHELPFUL' && styles.feedbackBtnDownSelected,
+                                feedbackValue === 'HELPFUL' && styles.feedbackBtnGreyed,
+                              ]}
+                              onPress={() => handleFeedbackTap(item.id, 'UNHELPFUL')}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={styles.feedbackBtnIcon}>👎</Text>
+                            </TouchableOpacity>
+                          </>
+                        )}
+                      </View>
                     )}
                   </View>
                   <View style={styles.itemPriceCol}>
@@ -289,7 +350,13 @@ export default function HistoryScreen() {
         animationType="slide"
         onRequestClose={() => setEditingBill(null)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <TouchableWithoutFeedback onPress={() => setEditingBill(null)}>
+            <View style={styles.overlayBackdrop} />
+          </TouchableWithoutFeedback>
           <View style={styles.editSheet}>
             <View style={styles.editHeader}>
               <Text style={styles.editTitle}>Edit Bill</Text>
@@ -339,7 +406,7 @@ export default function HistoryScreen() {
               )}
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -391,7 +458,10 @@ const styles = StyleSheet.create({
   footerSpinner: { marginVertical: 16 },
 
   modalOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end',
+    flex: 1, justifyContent: 'flex-end',
+  },
+  overlayBackdrop: {
+    ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)',
   },
   editSheet: {
     backgroundColor: COLORS.card, borderTopLeftRadius: 20, borderTopRightRadius: 20,
@@ -471,4 +541,18 @@ const styles = StyleSheet.create({
   itemPriceCol: { alignItems: 'flex-end' },
   itemPrice: { fontSize: 13, color: COLORS.ink, fontWeight: '600' },
   itemSaving: { fontSize: 11, color: COLORS.green, marginTop: 2 },
+
+  // Feedback row — same layout/values as ScanScreen's ItemRow feedback UI.
+  feedbackRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  feedbackLabel: { fontSize: 11, color: COLORS.inkLight },
+  feedbackBtn: {
+    width: 26, height: 26, borderRadius: 13,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: COLORS.bg, borderWidth: 1, borderColor: COLORS.border,
+  },
+  feedbackBtnIcon: { fontSize: 13 },
+  feedbackBtnUpSelected: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
+  feedbackBtnDownSelected: { backgroundColor: COLORS.red, borderColor: COLORS.red },
+  feedbackBtnGreyed: { opacity: 0.35 },
+  feedbackThanks: { fontSize: 11, color: COLORS.green, fontWeight: '600' },
 });
