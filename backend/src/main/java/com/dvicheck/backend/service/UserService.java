@@ -6,6 +6,7 @@ import com.dvicheck.backend.exception.DvicheckException;
 import com.dvicheck.backend.model.User;
 import com.dvicheck.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,6 +14,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserService {
 
     private final UserRepository userRepository;
@@ -51,6 +53,15 @@ public class UserService {
         userRepository.save(user);
     }
 
+    @Transactional
+    public void completeOnboarding(UUID userId) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> DvicheckException.notFound("User"));
+        user.setOnboardingCompleted(true);
+        userRepository.save(user);
+        log.info("Onboarding completed for user: {}", userId);
+    }
+
     private UserProfileDto toProfileDto(User user) {
         return new UserProfileDto(
             user.getId(),
@@ -59,7 +70,8 @@ public class UserService {
             user.getCurrency(),
             user.getNotificationsEnabled(),
             user.getCreatedAt(),
-            user.getBudgetAmount()
+            user.getBudgetAmount(),
+            user.getOnboardingCompleted()
         );
     }
 

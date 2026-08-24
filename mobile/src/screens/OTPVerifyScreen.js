@@ -42,8 +42,8 @@ export default function OTPVerifyScreen({ navigation, route }) {
     setIsLoading(true);
     try {
       const data = await verifyOtp(phone, code);
-      await setAuth(data.accessToken, data.refreshToken, data.userId, phone);
-      navigation.replace('MainApp');
+      await setAuth(data.accessToken, data.refreshToken, data.userId, phone, data.onboardingCompleted);
+      navigation.replace(data.onboardingCompleted ? 'MainApp' : 'Onboarding');
     } catch (err) {
       const msg = err.response?.data?.message || 'Invalid code. Please try again.';
       setError(msg);

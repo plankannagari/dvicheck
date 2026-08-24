@@ -41,6 +41,6 @@ public class AuthService {
         String refreshToken = jwtService.generateRefreshToken(user.getId());
         devOtpStore.remove(phone);
         log.info("User authenticated: {}", user.getId());
-        return new AuthResponse(accessToken, refreshToken, user.getId(), user.getPhone());
+        return new AuthResponse(accessToken, refreshToken, user.getId(), user.getPhone(), user.getOnboardingCompleted());
     }
 }

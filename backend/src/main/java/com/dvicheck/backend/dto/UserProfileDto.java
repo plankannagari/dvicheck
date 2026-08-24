@@ -11,5 +11,6 @@ public record UserProfileDto(
         String currency,
         Boolean notificationsEnabled,
         Instant createdAt,
-        BigDecimal budgetAmount
+        BigDecimal budgetAmount,
+        Boolean onboardingCompleted
 ) {}

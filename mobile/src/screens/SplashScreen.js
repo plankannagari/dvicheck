@@ -5,18 +5,21 @@ import { COLORS } from '../constants';
 import useAuthStore from '../store/authStore';
 
 export default function SplashScreen({ navigation }) {
-  const loadStoredAuth = useAuthStore((state) => state.loadStoredAuth);
-  const isLoading = useAuthStore((state) => state.isLoading);
+  const { loadStoredAuth, isAuthenticated, isLoading, onboardingCompleted } = useAuthStore();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      await loadStoredAuth();
-      const isAuthenticated = useAuthStore.getState().isAuthenticated;
-      navigation.replace(isAuthenticated ? 'MainApp' : 'PhoneEntry');
-    };
-
-    checkAuth();
+    loadStoredAuth();
   }, []);
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (isAuthenticated) {
+        navigation.replace(onboardingCompleted ? 'MainApp' : 'Onboarding');
+      } else {
+        navigation.replace('PhoneEntry');
+      }
+    }
+  }, [isLoading, isAuthenticated, onboardingCompleted]);
 
   return (
     <View style={styles.container}>

@@ -49,6 +49,10 @@ public class User {
     @Column(name = "budget_amount", precision = 10, scale = 2)
     private BigDecimal budgetAmount;
 
+    @Builder.Default
+    @Column(name = "onboarding_completed", nullable = false)
+    private Boolean onboardingCompleted = false;
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();
@@ -62,6 +66,9 @@ public class User {
         }
         if (notificationsEnabled == null) {
             notificationsEnabled = true;
+        }
+        if (onboardingCompleted == null) {
+            onboardingCompleted = false;
         }
     }
 

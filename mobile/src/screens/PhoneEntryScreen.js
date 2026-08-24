@@ -12,7 +12,10 @@ export default function PhoneEntryScreen({ navigation }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const isValidPhone = (p) => /^\+\d{10,}$/.test(p.replace(/\s/g, ''));
+  // Matches the backend's E.164 validation exactly (Day 2 pattern) — the old
+  // regex had no upper bound, so e.g. a 25-digit string passed client-side
+  // with no feedback and only failed (or silently truncated) server-side.
+  const isValidPhone = (p) => /^\+[1-9]\d{7,19}$/.test(p.replace(/\s/g, ''));
 
   const handleSendOtp = async () => {
     Keyboard.dismiss();

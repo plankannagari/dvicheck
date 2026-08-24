@@ -10,6 +10,7 @@ import Toast from './src/components/Toast';
 import { navigationRef } from './src/navigation/navigationRef';
 import MainTabNavigator from './src/navigation/MainTabNavigator';
 import InsightsScreen from './src/screens/InsightsScreen';
+import OnboardingScreen from './src/screens/OnboardingScreen';
 import OTPVerifyScreen from './src/screens/OTPVerifyScreen';
 import PhoneEntryScreen from './src/screens/PhoneEntryScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
@@ -23,6 +24,7 @@ export default function App() {
       <NavigationContainer ref={navigationRef}>
         <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Splash" component={SplashScreen} />
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
           <Stack.Screen name="PhoneEntry" component={PhoneEntryScreen} />
           <Stack.Screen name="OTPVerify" component={OTPVerifyScreen} />
           <Stack.Screen name="MainApp" component={MainTabNavigator} />

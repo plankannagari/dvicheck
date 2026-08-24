@@ -56,6 +56,12 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.ok("Push token registered", null));
     }
 
+    @PostMapping("/me/onboarding-complete")
+    public ResponseEntity<ApiResponse<Void>> completeOnboarding() {
+        userService.completeOnboarding(currentUserId());
+        return ResponseEntity.ok(ApiResponse.ok("Onboarding completed", null));
+    }
+
     private UUID currentUserId() {
         String principal = SecurityContextHolder.getContext()
             .getAuthentication().getPrincipal().toString();

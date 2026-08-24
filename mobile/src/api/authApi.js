@@ -7,6 +7,6 @@ export async function sendOtp(phone) {
 
 export async function verifyOtp(phone, otp) {
   const response = await apiClient.post('/auth/verify-otp', { phone, otp });
-  const { accessToken, refreshToken, userId, phone: userPhone } = response.data.data;
-  return { accessToken, refreshToken, userId, phone: userPhone };
+  const { accessToken, refreshToken, userId, phone: userPhone, onboardingCompleted } = response.data.data;
+  return { accessToken, refreshToken, userId, phone: userPhone, onboardingCompleted };
 }

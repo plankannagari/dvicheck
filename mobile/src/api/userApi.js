@@ -20,6 +20,16 @@ export const updatePreferences = async (prefs) => {
   }
 };
 
+export const completeOnboarding = async () => {
+  try {
+    const response = await apiClient.post('/users/me/onboarding-complete');
+    return response.data.data;
+  } catch (error) {
+    console.error('completeOnboarding error:', error);
+    throw error;
+  }
+};
+
 // for future use — implement DELETE /users/me on the backend later
 export const deleteAccount = async () => {
   try {
