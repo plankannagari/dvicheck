@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 
 import { COLORS } from '../constants';
 import useAuthStore from '../store/authStore';
@@ -23,7 +23,7 @@ export default function SplashScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.logo}>🧾</Text>
+      <Image source={require('../../assets/splash-icon.png')} style={styles.logo} resizeMode="contain" />
       <Text style={styles.title}>dvicheck</Text>
       <Text style={styles.subtitle}>Smart spending. Simplified.</Text>
       {isLoading && (
@@ -41,7 +41,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logo: {
-    fontSize: 64,
+    width: 96,
+    height: 96,
     marginBottom: 12,
   },
   title: {
