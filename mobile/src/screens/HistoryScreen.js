@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   SafeAreaView, StatusBar, FlatList, RefreshControl, ActivityIndicator, Modal,
-  KeyboardAvoidingView, Platform, TouchableWithoutFeedback,
+  KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Share,
 } from 'react-native';
+import * as Linking from 'expo-linking';
 
 import { COLORS } from '../constants';
 import useHistoryStore from '../store/historyStore';
@@ -114,6 +115,21 @@ export default function HistoryScreen() {
     }, 1500);
   };
 
+  const handleShare = async () => {
+    if (!activeBill) return;
+    const deepLink = Linking.createURL('bill/' + activeBill.id);
+    const avoidable = Number(activeBill.avoidableAmount) > 0
+      ? ', ' + fmt(activeBill.avoidableAmount) + ' of it avoidable'
+      : '';
+    const message = 'I spent ' + fmt(activeBill.totalAmount) + ' at ' +
+      activeBill.storeName + avoidable + '.\n\nView the receipt: ' + deepLink;
+    try {
+      await Share.share({ message, url: deepLink, title: 'dvicheck receipt' });
+    } catch (e) {
+      console.warn('Share failed:', e);
+    }
+  };
+
   if (activeBill || isLoadingDetail) {
     const lineItems = activeBill?.lineItems ?? [];
     const categoryCounts = CATEGORY_ORDER.reduce((acc, cat) => {
@@ -131,7 +147,9 @@ export default function HistoryScreen() {
             <Text style={styles.backArrow}>←</Text>
           </TouchableOpacity>
           <Text style={styles.detailTitle} numberOfLines={1}>{activeBill?.storeName ?? ''}</Text>
-          <View style={styles.backBtn} />
+          <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
+            <Text style={styles.shareBtnText}>Share</Text>
+          </TouchableOpacity>
         </View>
 
         {isLoadingDetail || !activeBill ? (
@@ -501,6 +519,8 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 32, height: 32, alignItems: 'flex-start', justifyContent: 'center' },
   backArrow: { fontSize: 22, color: COLORS.ink },
+  shareBtn: { width: 72, alignItems: 'flex-end' },
+  shareBtnText: { fontSize: 14, color: COLORS.accent },
   detailTitle: { flex: 1, textAlign: 'center', fontSize: 17, color: COLORS.ink, fontWeight: '600' },
 
   itemsScrollContent: { padding: 16, paddingBottom: 20 },

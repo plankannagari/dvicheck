@@ -7,6 +7,7 @@ import {
 import { COLORS } from '../constants';
 import { completeOnboarding } from '../api/userApi';
 import useAuthStore from '../store/authStore';
+import { consumeAndProcessPendingDeepLink } from '../utils/deepLinking';
 
 const { width } = Dimensions.get('window');
 
@@ -44,6 +45,9 @@ export default function OnboardingScreen({ navigation }) {
     }
     await markOnboardingComplete();
     navigation.replace('MainApp');
+    // Defer one tick — navigationRef.isReady() reflects the currently
+    // rendered state, not the replace() call that was just dispatched.
+    setTimeout(() => consumeAndProcessPendingDeepLink(), 0);
   };
 
   const handleNext = () => {

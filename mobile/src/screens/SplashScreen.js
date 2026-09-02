@@ -3,6 +3,7 @@ import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 
 import { COLORS } from '../constants';
 import useAuthStore from '../store/authStore';
+import { consumeAndProcessPendingDeepLink } from '../utils/deepLinking';
 
 export default function SplashScreen({ navigation }) {
   const { loadStoredAuth, isAuthenticated, isLoading, onboardingCompleted } = useAuthStore();
@@ -15,6 +16,11 @@ export default function SplashScreen({ navigation }) {
     if (!isLoading) {
       if (isAuthenticated) {
         navigation.replace(onboardingCompleted ? 'MainApp' : 'Onboarding');
+        if (onboardingCompleted) {
+          // Defer one tick — navigationRef.isReady() reflects the currently
+          // rendered state, not the replace() call that was just dispatched.
+          setTimeout(() => consumeAndProcessPendingDeepLink(), 0);
+        }
       } else {
         navigation.replace('PhoneEntry');
       }
