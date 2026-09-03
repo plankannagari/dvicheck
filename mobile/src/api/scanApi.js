@@ -26,8 +26,15 @@ export const uploadReceiptImage = async (imageUri, options = {}) => {
       formData.append('purchaseDate', options.purchaseDate);
     }
 
+    // Longer timeout than apiClient's global 10s default — this request runs
+    // Vision OCR + Gemini extraction + Gemini/Claude categorisation
+    // sequentially server-side (~7s typical), leaving almost no margin under
+    // the default before a slightly-slow upstream call or network condition
+    // (e.g. right after reconnecting from offline) trips a client-side timeout
+    // even though the backend would have finished successfully.
     const response = await apiClient.post('/bills/scan', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 30000,
     });
     return response.data.data;
   } catch (error) {

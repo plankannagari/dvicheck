@@ -1,11 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, SafeAreaView,
   RefreshControl,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import useAuthStore from '../store/authStore';
 import useHomeStore from '../store/homeStore';
+import useNetworkStore from '../store/networkStore';
+import { getQueue, processQueue } from '../utils/syncQueue';
 import { COLORS } from '../constants';
 import EmptyState from '../components/EmptyState';
 import SkeletonList from '../components/SkeletonList';
@@ -17,11 +20,55 @@ const fmtMonthName = (d) => d ? new Date(d).toLocaleDateString('en-US', { month:
 const billIcon = (type) => type === 'UTILITY' ? '⚡' : '🛒';
 const budgetColor = (pct) => (pct < 70 ? COLORS.green : pct < 90 ? COLORS.amber : COLORS.red);
 
+// No relative-time utility exists in the codebase yet — kept simple rather
+// than adding a dependency: minute/hour buckets, falling back to a plain
+// clock time for anything older than a day.
+const formatCacheTime = (isoString) => {
+  if (!isoString) return 'earlier';
+  const diffMin = Math.round((Date.now() - new Date(isoString).getTime()) / 60000);
+  if (diffMin < 1) return 'just now';
+  if (diffMin < 60) return `${diffMin} minute${diffMin !== 1 ? 's' : ''} ago`;
+  const diffHours = Math.round(diffMin / 60);
+  if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+  return new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+};
+
 export default function HomeScreen({ navigation }) {
   const { user } = useAuthStore();
-  const { summary, recentBills, monthlyReport, trends, isLoading, error, loadDashboard } = useHomeStore();
+  const {
+    summary, recentBills, monthlyReport, trends, isLoading, error, loadDashboard,
+    isOfflineCache, cachedAt,
+  } = useHomeStore();
+  const isConnected = useNetworkStore((s) => s.isConnected);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => { loadDashboard(); }, []);
+
+  // Refresh on every focus, not just mount — the queue can change from
+  // ScanScreen or a background auto-sync while Home wasn't focused.
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+      getQueue().then((queue) => {
+        if (isActive) setPendingCount(queue.length);
+      });
+      return () => {
+        isActive = false;
+      };
+    }, [])
+  );
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      await processQueue();
+    } finally {
+      const queue = await getQueue();
+      setPendingCount(queue.length);
+      setIsSyncing(false);
+    }
+  };
 
   const isFirstLoad = isLoading && summary === null;
 
@@ -48,6 +95,30 @@ export default function HomeScreen({ navigation }) {
         <Text style={styles.insightsLinkText}>📈 View Insights</Text>
         <Text style={styles.insightsLinkArrow}>→</Text>
       </TouchableOpacity>
+
+      {pendingCount > 0 && (
+        <View style={styles.syncBanner}>
+          <Text style={styles.syncBannerText}>
+            {pendingCount} receipt{pendingCount !== 1 ? 's' : ''} waiting to sync
+          </Text>
+          <TouchableOpacity
+            style={[styles.syncBtn, (!isConnected || isSyncing) && styles.syncBtnDisabled]}
+            onPress={handleSync}
+            disabled={!isConnected || isSyncing}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.syncBtnText}>{isSyncing ? 'Syncing…' : 'Sync now'}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {isOfflineCache && (
+        <View style={styles.offlineCacheBanner} pointerEvents="none">
+          <Text style={styles.offlineCacheBannerText}>
+            Offline — showing cached data from {formatCacheTime(cachedAt)}
+          </Text>
+        </View>
+      )}
 
       <ScrollView
         style={styles.scroll}
@@ -277,6 +348,24 @@ const styles = StyleSheet.create({
   },
   insightsLinkText:{ fontSize:13, color:COLORS.amber, fontWeight:'600' },
   insightsLinkArrow:{ fontSize:13, color:COLORS.amber, fontWeight:'600' },
+  syncBanner:{
+    flexDirection:'row', alignItems:'center', justifyContent:'space-between',
+    marginHorizontal:16, marginBottom:12,
+    backgroundColor:COLORS.amberLight, borderRadius:12,
+    paddingVertical:10, paddingHorizontal:14,
+  },
+  syncBannerText:{ fontSize:13, color:COLORS.amber, fontWeight:'600', flex:1, marginRight:8 },
+  syncBtn:{
+    backgroundColor:COLORS.accent, borderRadius:10,
+    paddingVertical:6, paddingHorizontal:12,
+  },
+  syncBtnDisabled:{ backgroundColor:COLORS.border },
+  syncBtnText:{ color:'#fff', fontSize:12, fontWeight:'600' },
+  offlineCacheBanner:{
+    backgroundColor:COLORS.amberLight, marginHorizontal:16, marginBottom:12,
+    borderRadius:10, paddingVertical:8, paddingHorizontal:14,
+  },
+  offlineCacheBannerText:{ fontSize:12, color:COLORS.amber, lineHeight:17 },
   scroll:{ flex:1 },
   scrollContent:{ paddingBottom:20 },
   skeletonWrap:{ padding: 16 },

@@ -1,5 +1,8 @@
 import { create } from 'zustand';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchHomeSummary, fetchRecentBills, fetchMonthlyReport, fetchTrends } from '../api/homeApi';
+
+const HOME_CACHE_KEY = 'dvicheck_home_cache';
 
 const useHomeStore = create((set, get) => ({
   summary: null,
@@ -8,6 +11,8 @@ const useHomeStore = create((set, get) => ({
   trends: null,
   isLoading: false,
   error: null,
+  isOfflineCache: false,
+  cachedAt: null,
 
   loadDashboard: async () => {
     set({ isLoading: true, error: null });
@@ -16,13 +21,44 @@ const useHomeStore = create((set, get) => ({
         fetchHomeSummary(),
         fetchRecentBills(5),
       ]);
-      set({ summary, recentBills, isLoading: false });
+      set({ summary, recentBills, isLoading: false, isOfflineCache: false, cachedAt: null });
+
+      try {
+        await AsyncStorage.setItem(
+          HOME_CACHE_KEY,
+          JSON.stringify({ summary, recentBills, cachedAt: new Date().toISOString() })
+        );
+      } catch (cacheErr) {
+        console.warn('loadDashboard: failed to write cache (ignored):', cacheErr);
+      }
     } catch (error) {
       console.error('loadDashboard error:', error);
-      set({
-        error: error.appError?.message || 'Something went wrong.',
-        isLoading: false,
-      });
+
+      let hydratedFromCache = false;
+      try {
+        const cached = await AsyncStorage.getItem(HOME_CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          set({
+            summary: parsed.summary,
+            recentBills: parsed.recentBills,
+            isLoading: false,
+            isOfflineCache: true,
+            cachedAt: parsed.cachedAt,
+            error: null,
+          });
+          hydratedFromCache = true;
+        }
+      } catch (cacheErr) {
+        console.warn('loadDashboard: failed to read cache (ignored):', cacheErr);
+      }
+
+      if (!hydratedFromCache) {
+        set({
+          error: error.appError?.message || 'Something went wrong.',
+          isLoading: false,
+        });
+      }
     }
     get().loadMonthlyReport();
     get().loadTrends(); // fire and forget after existing calls
@@ -57,6 +93,8 @@ const useHomeStore = create((set, get) => ({
     trends: null,
     isLoading: false,
     error: null,
+    isOfflineCache: false,
+    cachedAt: null,
   }),
 }));
 

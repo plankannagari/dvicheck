@@ -24,6 +24,7 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import SplashScreen from './src/screens/SplashScreen';
 import { handleIncomingUrl, setPendingDeepLink } from './src/utils/deepLinking';
 import useAuthStore from './src/store/authStore';
+import { initNetworkListener } from './src/store/networkStore';
 
 ExpoSplashScreen.preventAutoHideAsync();
 
@@ -33,6 +34,8 @@ ExpoSplashScreen.preventAutoHideAsync();
 Linking.getInitialURL().then((url) => {
   if (url) setPendingDeepLink(url);
 });
+
+initNetworkListener();
 
 const Stack = createStackNavigator();
 

@@ -28,6 +28,18 @@ const fmt = (n) => '$' + Number(n ?? 0).toFixed(2);
 const fmtDate = (d) => d
   ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   : '';
+// No relative-time utility exists in the codebase yet — kept simple rather
+// than adding a dependency: minute/hour buckets, falling back to a plain
+// clock time for anything older than a day.
+const formatCacheTime = (isoString) => {
+  if (!isoString) return 'earlier';
+  const diffMin = Math.round((Date.now() - new Date(isoString).getTime()) / 60000);
+  if (diffMin < 1) return 'just now';
+  if (diffMin < 60) return `${diffMin} minute${diffMin !== 1 ? 's' : ''} ago`;
+  const diffHours = Math.round(diffMin / 60);
+  if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+  return new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+};
 const billIcon = (type) => (type === 'UTILITY' ? '⚡' : '🛒');
 
 function SkeletonRow() {
@@ -50,6 +62,7 @@ export default function HistoryScreen() {
   const {
     bills, activeBill, isLoading, isLoadingDetail, hasMore, error,
     loadBills, loadBillDetail, clearActiveBill, editBill,
+    isOfflineCache, cachedAt,
   } = useHistoryStore();
   const { showToast } = useToastStore();
 
@@ -278,6 +291,14 @@ export default function HistoryScreen() {
         <Text style={styles.heading}>Bill History</Text>
       </View>
 
+      {isOfflineCache && (
+        <View style={styles.offlineCacheBanner} pointerEvents="none">
+          <Text style={styles.offlineCacheBannerText}>
+            Offline — showing cached data from {formatCacheTime(cachedAt)}
+          </Text>
+        </View>
+      )}
+
       <View style={styles.searchBar}>
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
@@ -444,6 +465,12 @@ const styles = StyleSheet.create({
     borderRadius: 10, marginBottom: 12,
   },
   errorText: { fontSize: 12, color: COLORS.red },
+
+  offlineCacheBanner: {
+    backgroundColor: COLORS.amberLight, marginHorizontal: 16, marginBottom: 12,
+    borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14,
+  },
+  offlineCacheBannerText: { fontSize: 12, color: COLORS.amber, lineHeight: 17 },
 
   searchBar: {
     flexDirection: 'row', alignItems: 'center',

@@ -1,7 +1,9 @@
 import { create } from 'zustand';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchBills, fetchBillDetail, updateBill } from '../api/billApi';
 
 const PAGE_SIZE = 20;
+const HISTORY_CACHE_KEY = 'dvicheck_history_cache';
 
 const useHistoryStore = create((set, get) => ({
   bills: [],
@@ -12,6 +14,8 @@ const useHistoryStore = create((set, get) => ({
   page: 0,
   search: '',
   error: null,
+  isOfflineCache: false,
+  cachedAt: null,
 
   loadBills: async (refresh = false, search = '') => {
     // Pagination continuation (refresh=false) reuses whichever search is
@@ -31,10 +35,50 @@ const useHistoryStore = create((set, get) => ({
         hasMore: result.length === PAGE_SIZE,
         page: page + 1,
         isLoading: false,
+        isOfflineCache: false,
+        cachedAt: null,
       }));
+
+      // Only the first page (refresh=true, index view) is cached — pagination
+      // pages have no offline fallback anyway.
+      if (refresh) {
+        try {
+          await AsyncStorage.setItem(
+            HISTORY_CACHE_KEY,
+            JSON.stringify({ bills: result, cachedAt: new Date().toISOString() })
+          );
+        } catch (cacheErr) {
+          console.warn('loadBills: failed to write cache (ignored):', cacheErr);
+        }
+      }
     } catch (error) {
       console.error('loadBills error:', error);
-      set({ error: error.appError?.message || 'Something went wrong.', isLoading: false });
+
+      let hydratedFromCache = false;
+      if (refresh) {
+        try {
+          const cached = await AsyncStorage.getItem(HISTORY_CACHE_KEY);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            set({
+              bills: parsed.bills,
+              isLoading: false,
+              isOfflineCache: true,
+              cachedAt: parsed.cachedAt,
+              error: null,
+            });
+            hydratedFromCache = true;
+          }
+        } catch (cacheErr) {
+          console.warn('loadBills: failed to read cache (ignored):', cacheErr);
+        }
+      }
+
+      // Non-refresh (pagination) failures, and refresh failures with no
+      // cache available, keep the existing generic-error behavior.
+      if (!hydratedFromCache) {
+        set({ error: error.appError?.message || 'Something went wrong.', isLoading: false });
+      }
     }
   },
 

@@ -9,9 +9,11 @@ import * as ImagePicker from 'expo-image-picker';
 import { COLORS } from '../constants';
 import { uploadReceiptImage } from '../api/scanApi';
 import { submitFeedback } from '../api/feedbackApi';
+import { addToQueue } from '../utils/syncQueue';
 import useToastStore from '../store/toastStore';
 import useHomeStore from '../store/homeStore';
 import useHistoryStore from '../store/historyStore';
+import useNetworkStore from '../store/networkStore';
 import Toast from '../components/Toast';
 
 const CATEGORY_ORDER = ['ESSENTIAL', 'REDUCIBLE', 'AVOIDABLE', 'DUPLICATE'];
@@ -124,7 +126,7 @@ function ItemRow({ item, isLast, manual, feedbackValue, onFeedback }) {
 export default function ScanScreen({ navigation }) {
   const cameraRef = useRef(null);
   const [permission, requestPermission] = useCameraPermissions();
-  const [phase, setPhase] = useState('camera'); // 'camera' | 'processing' | 'result'
+  const [phase, setPhase] = useState('camera'); // 'camera' | 'processing' | 'result' | 'queued'
   const [isCapturing, setIsCapturing] = useState(false);
   const [scanResult, setScanResult] = useState(null);
   const [stepIndex, setStepIndex] = useState(0);
@@ -138,6 +140,7 @@ export default function ScanScreen({ navigation }) {
   } = useToastStore();
   const { loadDashboard } = useHomeStore();
   const { loadBills } = useHistoryStore();
+  const isConnected = useNetworkStore((s) => s.isConnected);
 
   useEffect(() => {
     if (phase !== 'processing') return;
@@ -159,6 +162,20 @@ export default function ScanScreen({ navigation }) {
   }, [phase]);
 
   const handleScan = async (uri) => {
+    if (!isConnected) {
+      setPhase('queued');
+      try {
+        await addToQueue(uri);
+        showToast("Saved offline — we'll scan it once you're back online", 'info', 3000);
+      } catch (e) {
+        showToast('Could not save receipt offline. Try again.', 'error');
+        setPhase('camera');
+        return;
+      }
+      setTimeout(() => setPhase('camera'), 1800);
+      return;
+    }
+
     setPhase('processing');
     try {
       const bill = await uploadReceiptImage(uri);
@@ -239,6 +256,16 @@ export default function ScanScreen({ navigation }) {
     setManualName('');
     setManualPrice('');
   };
+
+  if (phase === 'queued') {
+    return (
+      <View style={styles.processingScreen}>
+        <Text style={styles.emoji}>✅</Text>
+        <Text style={styles.processingHeading}>Saved offline</Text>
+        <Text style={styles.processingStep}>We'll scan it automatically once you're back online.</Text>
+      </View>
+    );
+  }
 
   if (phase === 'processing') {
     return (
@@ -399,6 +426,13 @@ export default function ScanScreen({ navigation }) {
       <CameraView ref={cameraRef} style={styles.camera} facing="back" />
 
       <SafeAreaView style={styles.cameraOverlay} pointerEvents="box-none">
+        {!isConnected && (
+          <View style={styles.offlineBanner} pointerEvents="none">
+            <Text style={styles.offlineBannerText}>
+              You're offline — receipts will be saved and synced later
+            </Text>
+          </View>
+        )}
         <Text style={styles.cameraHint}>Position receipt within frame</Text>
 
         <View style={styles.guideBox} pointerEvents="none">
@@ -459,6 +493,14 @@ const styles = StyleSheet.create({
   cameraHint: {
     color: '#fff', fontSize: 13, backgroundColor: 'rgba(0,0,0,0.4)',
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+  },
+  offlineBanner: {
+    backgroundColor: COLORS.amber, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 8, marginBottom: 10,
+    marginHorizontal: 20,
+  },
+  offlineBannerText: {
+    color: '#fff', fontSize: 12, fontWeight: '600', textAlign: 'center',
   },
   guideBox: {
     width: '82%', height: '42%', marginTop: '16%',
