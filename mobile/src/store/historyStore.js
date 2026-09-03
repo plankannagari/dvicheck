@@ -18,6 +18,7 @@ const useHistoryStore = create((set, get) => ({
   cachedAt: null,
 
   loadBills: async (refresh = false, search = '') => {
+    if (get().isLoading) return;
     // Pagination continuation (refresh=false) reuses whichever search is
     // already active in the store, rather than the caller's default '' —
     // otherwise scrolling to load more during an active search would

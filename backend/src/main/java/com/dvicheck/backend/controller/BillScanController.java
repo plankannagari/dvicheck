@@ -16,6 +16,7 @@ import com.dvicheck.backend.service.GeminiReceiptParser;
 import com.dvicheck.backend.service.OcrService;
 import com.dvicheck.backend.service.PantryService;
 import com.dvicheck.backend.service.ReceiptParser;
+import com.dvicheck.backend.service.SpendingTrendsService;
 import com.dvicheck.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,6 +57,7 @@ BillScanController {
     private final UserService userService;
     private final PantryService pantryService;
     private final BudgetAlertService budgetAlertService;
+    private final SpendingTrendsService spendingTrendsService;
 
     @Value("${app.ai.use-gemini-analyser:false}")
     private boolean useGeminiAnalyser;
@@ -150,6 +152,9 @@ BillScanController {
         // controller has no @Transactional of its own), so the bill row is guaranteed
         // durable before this runs. checkAndSendAlerts() never throws outward.
         budgetAlertService.checkAndSendAlerts(currentUserId());
+        // Evict so the trends chart reflects this bill immediately instead of staying
+        // stale for up to the 5-minute cache TTL.
+        spendingTrendsService.evictTrendsCache(currentUserId());
         return ResponseEntity.ok(ApiResponse.ok(toResponse(saved)));
     }
 

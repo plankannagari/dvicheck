@@ -59,11 +59,18 @@ function SkeletonRow() {
 }
 
 export default function HistoryScreen() {
-  const {
-    bills, activeBill, isLoading, isLoadingDetail, hasMore, error,
-    loadBills, loadBillDetail, clearActiveBill, editBill,
-    isOfflineCache, cachedAt,
-  } = useHistoryStore();
+  const bills = useHistoryStore((s) => s.bills);
+  const activeBill = useHistoryStore((s) => s.activeBill);
+  const isLoading = useHistoryStore((s) => s.isLoading);
+  const isLoadingDetail = useHistoryStore((s) => s.isLoadingDetail);
+  const hasMore = useHistoryStore((s) => s.hasMore);
+  const error = useHistoryStore((s) => s.error);
+  const loadBills = useHistoryStore((s) => s.loadBills);
+  const loadBillDetail = useHistoryStore((s) => s.loadBillDetail);
+  const clearActiveBill = useHistoryStore((s) => s.clearActiveBill);
+  const editBill = useHistoryStore((s) => s.editBill);
+  const isOfflineCache = useHistoryStore((s) => s.isOfflineCache);
+  const cachedAt = useHistoryStore((s) => s.cachedAt);
   const { showToast } = useToastStore();
 
   const [search, setSearch] = useState('');
@@ -332,6 +339,10 @@ export default function HistoryScreen() {
           contentContainerStyle={styles.scrollContent}
           data={bills}
           keyExtractor={(item) => item.id}
+          removeClippedSubviews={true}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={7}
           refreshControl={
             <RefreshControl refreshing={isLoading} onRefresh={() => loadBills(true)} tintColor={COLORS.accent} />
           }

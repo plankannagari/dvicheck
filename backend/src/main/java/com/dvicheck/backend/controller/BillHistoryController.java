@@ -18,7 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 // @Transactional(readOnly = true): this controller calls BillRepository directly instead of
 // going through a service, so it has no service-layer transaction to keep the Hibernate
@@ -44,15 +46,21 @@ public class BillHistoryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String search) {
-        List<RecentBillDto> dtos = (search == null || search.isBlank())
+        List<Bill> bills = (search == null || search.isBlank())
             ? billRepository.findRecentByUserId(currentUserId(), PageRequest.of(page, size))
-                .stream()
-                .map(this::toRecentBillDto)
-                .toList()
             : billRepository.findByUserIdAndStoreNameContainingIgnoreCase(
                 currentUserId(), search, PageRequest.of(page, size))
-                .map(this::toRecentBillDto)
                 .getContent();
+
+        List<UUID> billIds = bills.stream().map(Bill::getId).toList();
+        Map<UUID, Long> itemCounts = billIds.isEmpty()
+            ? Map.of()
+            : billRepository.countLineItemsByBillIds(billIds).stream()
+                .collect(Collectors.toMap(row -> (UUID) row[0], row -> (Long) row[1]));
+
+        List<RecentBillDto> dtos = bills.stream()
+            .map(b -> toRecentBillDto(b, itemCounts))
+            .toList();
         return ResponseEntity.ok(ApiResponse.ok(dtos));
     }
 
@@ -98,7 +106,7 @@ public class BillHistoryController {
         return ResponseEntity.ok(ApiResponse.ok(toDetailResponse(saved)));
     }
 
-    private RecentBillDto toRecentBillDto(Bill bill) {
+    private RecentBillDto toRecentBillDto(Bill bill, Map<UUID, Long> itemCounts) {
         return new RecentBillDto(
             bill.getId(),
             bill.getStoreName(),
@@ -107,7 +115,7 @@ public class BillHistoryController {
             bill.getTotalAmount(),
             bill.getAvoidableAmount(),
             bill.getCurrency(),
-            bill.getLineItems().size()
+            itemCounts.getOrDefault(bill.getId(), 0L).intValue()
         );
     }
 

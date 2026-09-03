@@ -15,6 +15,7 @@ const useHomeStore = create((set, get) => ({
   cachedAt: null,
 
   loadDashboard: async () => {
+    if (get().isLoading) return;
     set({ isLoading: true, error: null });
     try {
       const [summary, recentBills] = await Promise.all([

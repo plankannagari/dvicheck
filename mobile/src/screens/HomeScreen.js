@@ -35,10 +35,15 @@ const formatCacheTime = (isoString) => {
 
 export default function HomeScreen({ navigation }) {
   const { user } = useAuthStore();
-  const {
-    summary, recentBills, monthlyReport, trends, isLoading, error, loadDashboard,
-    isOfflineCache, cachedAt,
-  } = useHomeStore();
+  const summary = useHomeStore((s) => s.summary);
+  const recentBills = useHomeStore((s) => s.recentBills);
+  const monthlyReport = useHomeStore((s) => s.monthlyReport);
+  const trends = useHomeStore((s) => s.trends);
+  const isLoading = useHomeStore((s) => s.isLoading);
+  const error = useHomeStore((s) => s.error);
+  const loadDashboard = useHomeStore((s) => s.loadDashboard);
+  const isOfflineCache = useHomeStore((s) => s.isOfflineCache);
+  const cachedAt = useHomeStore((s) => s.cachedAt);
   const isConnected = useNetworkStore((s) => s.isConnected);
   const [pendingCount, setPendingCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);

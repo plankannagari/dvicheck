@@ -48,4 +48,20 @@ public interface BillRepository extends JpaRepository<Bill, UUID> {
         + "GROUP BY b.storeName ORDER BY SUM(b.totalAmount) DESC")
     List<Object[]> findStoreTotalsBetween(
         @Param("userId") UUID userId, @Param("from") LocalDate from, @Param("to") LocalDate to, Pageable pageable);
+
+    @Query("SELECT li.bill.id, COUNT(li) FROM LineItem li WHERE li.bill.id IN :billIds GROUP BY li.bill.id")
+    List<Object[]> countLineItemsByBillIds(@Param("billIds") List<UUID> billIds);
+
+    // ::date cast added on top of the given query: date_trunc('week', purchase_date) on a
+    // `date` column returns timestamptz in this DB (confirmed via pg_typeof), not a plain
+    // date — casting back to date here avoids relying on how the JDBC driver/Hibernate maps
+    // timestamptz into the Object[] row (Timestamp vs Instant vs OffsetDateTime), which is
+    // ambiguous across driver/Hibernate versions. Truncation point is unaffected (still Monday,
+    // confirmed via SELECT date_trunc('week', CURRENT_DATE) during Step 6 verification).
+    @Query(value = "SELECT date_trunc('week', purchase_date)::date as week_start, " +
+        "SUM(total_amount) as total FROM bills " +
+        "WHERE user_id = :userId AND purchase_date >= :earliestWeekStart " +
+        "GROUP BY week_start", nativeQuery = true)
+    List<Object[]> sumTotalsGroupedByWeek(@Param("userId") UUID userId,
+                                           @Param("earliestWeekStart") LocalDate earliestWeekStart);
 }
