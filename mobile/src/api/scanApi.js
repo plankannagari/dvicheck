@@ -43,4 +43,9 @@ export const uploadReceiptImage = async (imageUri, options = {}) => {
   }
 };
 
+export const addManualItems = async (billId, items) => {
+  const response = await apiClient.patch(`/bills/${billId}/items`, { items });
+  return response.data.data;
+};
+
 export default uploadReceiptImage;

@@ -47,6 +47,11 @@ dvicheck:
       api-key: ${GOOGLE_VISION_API_KEY:}
 
 app:
+  auth:
+    # local default — override to false via env var for real-device/TestFlight testing,
+    # which routes AuthService through the existing SupabaseAuthClient instead of the
+    # in-memory dev OTP stub.
+    dev-mode: ${AUTH_DEV_MODE:true}
   anthropic:
     # Real key lives in ANTHROPIC_API_KEY (local shell env / Railway env var) — never commit it here.
     api-key: ${ANTHROPIC_API_KEY:placeholder}

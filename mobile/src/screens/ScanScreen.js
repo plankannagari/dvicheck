@@ -7,7 +7,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 
 import { COLORS } from '../constants';
-import { uploadReceiptImage } from '../api/scanApi';
+import { uploadReceiptImage, addManualItems } from '../api/scanApi';
 import { submitFeedback } from '../api/feedbackApi';
 import { addToQueue } from '../utils/syncQueue';
 import useToastStore from '../store/toastStore';
@@ -383,8 +383,22 @@ export default function ScanScreen({ navigation }) {
 
           <TouchableOpacity
             style={styles.primaryBtn}
-            onPress={() => {
-              // TODO Day 15: send manualItems to backend PATCH endpoint
+            onPress={async () => {
+              if (manualItems.length > 0) {
+                try {
+                  await addManualItems(
+                    scanResult.billId,
+                    manualItems.map((item) => ({
+                      name: item.name,
+                      unitPrice: item.unitPrice,
+                      totalPrice: item.totalPrice,
+                    }))
+                  );
+                } catch (err) {
+                  console.error('addManualItems error:', err);
+                  showToast('Some manually added items could not be saved', 'error');
+                }
+              }
               loadDashboard();
               loadBills(true);
               reset();

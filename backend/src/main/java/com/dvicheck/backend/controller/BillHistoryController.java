@@ -1,5 +1,6 @@
 package com.dvicheck.backend.controller;
 
+import com.dvicheck.backend.dto.AddManualItemsRequest;
 import com.dvicheck.backend.dto.ApiResponse;
 import com.dvicheck.backend.dto.BillDetailResponse;
 import com.dvicheck.backend.dto.RecentBillDto;
@@ -7,8 +8,8 @@ import com.dvicheck.backend.dto.UpdateBillRequest;
 import com.dvicheck.backend.exception.DvicheckException;
 import com.dvicheck.backend.model.Bill;
 import com.dvicheck.backend.model.BillType;
-import com.dvicheck.backend.model.LineItem;
 import com.dvicheck.backend.repository.BillRepository;
+import com.dvicheck.backend.service.BillService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -34,6 +35,7 @@ import java.util.stream.Collectors;
 public class BillHistoryController {
 
     private final BillRepository billRepository;
+    private final BillService billService;
 
     private UUID currentUserId() {
         String principal = SecurityContextHolder.getContext()
@@ -73,10 +75,10 @@ public class BillHistoryController {
             throw DvicheckException.unauthorized();
         }
 
-        return ResponseEntity.ok(ApiResponse.ok(toDetailResponse(bill)));
+        return ResponseEntity.ok(ApiResponse.ok(billService.toDetailResponse(bill)));
     }
 
-    // Overrides the class-level readOnly=true — this is the one write in this controller.
+    // Overrides the class-level readOnly=true (see addManualItems() below for the other write).
     @Transactional
     @PatchMapping("/{billId}")
     public ResponseEntity<ApiResponse<BillDetailResponse>> updateBill(
@@ -103,7 +105,21 @@ public class BillHistoryController {
         }
 
         Bill saved = billRepository.save(bill);
-        return ResponseEntity.ok(ApiResponse.ok(toDetailResponse(saved)));
+        return ResponseEntity.ok(ApiResponse.ok(billService.toDetailResponse(saved)));
+    }
+
+    // Overrides the class-level readOnly=true — this is now the second write in this
+    // controller (alongside updateBill() above), and needs the same override for the
+    // same reason: without it, BillService.addManualItems()'s own @Transactional would
+    // just join this method's read-only transaction under default REQUIRED propagation
+    // instead of opening a writable one.
+    @Transactional
+    @PatchMapping("/{billId}/items")
+    public ResponseEntity<ApiResponse<BillDetailResponse>> addManualItems(
+            @PathVariable UUID billId,
+            @RequestBody AddManualItemsRequest request) {
+        var updated = billService.addManualItems(billId, currentUserId(), request.items());
+        return ResponseEntity.ok(ApiResponse.ok(updated));
     }
 
     private RecentBillDto toRecentBillDto(Bill bill, Map<UUID, Long> itemCounts) {
@@ -116,38 +132,6 @@ public class BillHistoryController {
             bill.getAvoidableAmount(),
             bill.getCurrency(),
             itemCounts.getOrDefault(bill.getId(), 0L).intValue()
-        );
-    }
-
-    private BillDetailResponse toDetailResponse(Bill bill) {
-        List<BillDetailResponse.LineItemDetail> lineItems = bill.getLineItems().stream()
-            .map(this::toLineItemDetail)
-            .toList();
-
-        return new BillDetailResponse(
-            bill.getId(),
-            bill.getStoreName(),
-            bill.getBillType().name(),
-            bill.getPurchaseDate(),
-            bill.getTotalAmount(),
-            bill.getAvoidableAmount(),
-            bill.getCurrency(),
-            bill.getAiSummary(),
-            lineItems
-        );
-    }
-
-    private BillDetailResponse.LineItemDetail toLineItemDetail(LineItem item) {
-        return new BillDetailResponse.LineItemDetail(
-            item.getId(),
-            item.getName(),
-            item.getQuantity(),
-            item.getUnitPrice(),
-            item.getTotalPrice(),
-            item.getCategory().name(),
-            item.getSuggestion(),
-            item.getSavingEstimate(),
-            item.getConfidence()
         );
     }
 }
