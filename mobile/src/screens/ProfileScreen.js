@@ -152,6 +152,21 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.memberSince}>Member since {fmtDate(profile.createdAt)}</Text>
           </View>
 
+          {profile.isPro ? (
+            <View style={styles.upgradeBtn}>
+              <Text style={styles.upgradeBtnText}>✨ dvicheck Pro — active</Text>
+            </View>
+          ) : (
+          <TouchableOpacity
+            style={styles.upgradeBtn}
+            onPress={() => navigation.navigate('Paywall')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.upgradeBtnText}>✨ Upgrade to Pro</Text>
+            <Text style={styles.upgradeBtnArrow}>→</Text>
+          </TouchableOpacity>
+          )}
+
           <Text style={styles.sectionLabel}>Preferences</Text>
           <View style={styles.prefsCard}>
             <View style={styles.prefRow}>
@@ -278,6 +293,14 @@ const styles = StyleSheet.create({
   },
   phone: { fontSize: 17, color: COLORS.ink, fontWeight: '600', marginBottom: 4 },
   memberSince: { fontSize: 12, color: COLORS.inkLight },
+
+  upgradeBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: COLORS.ink, borderRadius: 16,
+    paddingVertical: 16, paddingHorizontal: 18, marginBottom: 20,
+  },
+  upgradeBtnText: { fontSize: 15, color: COLORS.accent, fontWeight: '600' },
+  upgradeBtnArrow: { fontSize: 15, color: COLORS.accent, fontWeight: '600' },
 
   sectionLabel: {
     fontSize: 10, color: COLORS.inkLight, letterSpacing: 2,

@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.mobile"
+      "bundleIdentifier": "com.dvicheck.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -40,6 +40,10 @@
         }
       ],
       "expo-notifications"
-    ]
+    ],
+    "extra": {
+      "revenueCatIosKey": "test_pcXVYCsrELqFSigQDUpwrmNQkzx",
+      "revenueCatAndroidKey": "test_pcXVYCsrELqFSigQDUpwrmNQkzx"
+    }
   }
 }

@@ -52,6 +52,10 @@ app:
     # which routes AuthService through the existing SupabaseAuthClient instead of the
     # in-memory dev OTP stub.
     dev-mode: ${AUTH_DEV_MODE:true}
+  revenuecat:
+    # Shared secret RevenueCat sends back as the Authorization header on every webhook
+    # call — set in the RevenueCat dashboard and here via env var, never committed.
+    webhook-secret: ${REVENUECAT_WEBHOOK_SECRET:}
   anthropic:
     # Real key lives in ANTHROPIC_API_KEY (local shell env / Railway env var) — never commit it here.
     api-key: ${ANTHROPIC_API_KEY:placeholder}

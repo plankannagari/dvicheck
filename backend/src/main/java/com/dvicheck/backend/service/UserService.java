@@ -71,7 +71,8 @@ public class UserService {
             user.getNotificationsEnabled(),
             user.getCreatedAt(),
             user.getBudgetAmount(),
-            user.getOnboardingCompleted()
+            user.getOnboardingCompleted(),
+            user.isPro()
         );
     }
 

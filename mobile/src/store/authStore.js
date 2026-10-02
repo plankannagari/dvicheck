@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { registerForPushToken } from '../utils/notifications';
+import { initPurchases } from '../utils/purchases';
 
 const useAuthStore = create((set) => ({
   user: null,
@@ -19,6 +20,7 @@ const useAuthStore = create((set) => ({
       console.error('Failed to save auth tokens:', error);
     }
     registerForPushToken(); // fire and forget — no await needed
+    initPurchases(userId).catch(() => {}); // fire and forget — same pattern as push token registration
     set({
       user: { userId, phone },
       accessToken,
@@ -49,6 +51,7 @@ const useAuthStore = create((set) => ({
       const userId = await SecureStore.getItemAsync('user_id');
       const stored = await SecureStore.getItemAsync('onboarding_completed');
       if (token && userId) {
+        initPurchases(userId).catch(() => {}); // fire and forget — same pattern as push token registration
         set({
           accessToken: token,
           user: { userId },

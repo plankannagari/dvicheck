@@ -53,6 +53,17 @@ public class User {
     @Column(name = "onboarding_completed", nullable = false)
     private Boolean onboardingCompleted = false;
 
+    @Column(name = "subscription_expires_at")
+    private Instant subscriptionExpiresAt;
+
+    @Column(name = "subscription_product_id")
+    private String subscriptionProductId;
+
+    @Transient
+    public boolean isPro() {
+        return subscriptionExpiresAt != null && subscriptionExpiresAt.isAfter(Instant.now());
+    }
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();

@@ -30,6 +30,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/auth/send-otp", "/api/auth/verify-otp").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
+                        // Can't require a dvicheck JWT here — RevenueCat's servers don't have one.
+                        // The webhook-secret check in WebhookController is what protects this instead.
+                        .requestMatchers("/api/webhooks/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {

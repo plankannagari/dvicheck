@@ -12,5 +12,6 @@ public record UserProfileDto(
         Boolean notificationsEnabled,
         Instant createdAt,
         BigDecimal budgetAmount,
-        Boolean onboardingCompleted
+        Boolean onboardingCompleted,
+        Boolean isPro
 ) {}

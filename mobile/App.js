@@ -19,6 +19,7 @@ import MainTabNavigator from './src/navigation/MainTabNavigator';
 import InsightsScreen from './src/screens/InsightsScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import OTPVerifyScreen from './src/screens/OTPVerifyScreen';
+import PaywallScreen from './src/screens/PaywallScreen';
 import PhoneEntryScreen from './src/screens/PhoneEntryScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SplashScreen from './src/screens/SplashScreen';
@@ -68,6 +69,7 @@ export default function App() {
             <Stack.Screen name="MainApp" component={MainTabNavigator} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="Insights" component={InsightsScreen} />
+            <Stack.Screen name="Paywall" component={PaywallScreen} />
           </Stack.Navigator>
           <Toast />
           <NotificationListener />
