@@ -8,6 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import useAuthStore from '../store/authStore';
 import useHomeStore from '../store/homeStore';
 import useNetworkStore from '../store/networkStore';
+import useProfileStore from '../store/profileStore';
 import { getQueue, processQueue } from '../utils/syncQueue';
 import { COLORS } from '../constants';
 import EmptyState from '../components/EmptyState';
@@ -45,10 +46,19 @@ export default function HomeScreen({ navigation }) {
   const isOfflineCache = useHomeStore((s) => s.isOfflineCache);
   const cachedAt = useHomeStore((s) => s.cachedAt);
   const isConnected = useNetworkStore((s) => s.isConnected);
+  // isPro comes from the profile (backend-authoritative, Day 31), not the trends response
+  const isPro = useProfileStore((s) => s.profile?.isPro);
   const [pendingCount, setPendingCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  useEffect(() => { loadDashboard(); }, []);
+  // Current week is always the last point — 8 for Pro, 2 for free
+  const lastWeekIndex = (trends?.weeks?.length ?? 0) - 1;
+
+  useEffect(() => {
+    loadDashboard();
+    // Only if not already loaded — ProfileScreen/PaywallScreen keep it fresh after that
+    if (!useProfileStore.getState().profile) useProfileStore.getState().loadProfile();
+  }, []);
 
   // Refresh on every focus, not just mount — the queue can change from
   // ScanScreen or a background auto-sync while Home wasn't focused.
@@ -247,9 +257,11 @@ export default function HomeScreen({ navigation }) {
 
                 <View style={styles.trendChart}>
                   {trends.weeks.map((week, i) => {
-                    const maxTotal = Number(trends.maxWeekTotal) || 1;
+                    // Scale to the weeks actually shown — free users get 2 of the 8, and
+                    // maxWeekTotal still spans all 8, so one big older week would flatten both bars
+                    const maxTotal = Math.max(...trends.weeks.map((w) => Number(w.total))) || 1;
                     const barHeight = Math.max((Number(week.total) / maxTotal) * 72, 2);
-                    const isCurrentWeek = i === 7;
+                    const isCurrentWeek = i === lastWeekIndex;
                     return (
                       <View key={week.weekStart ?? i} style={styles.trendColumn}>
                         <View style={styles.trendBarArea}>
@@ -264,16 +276,26 @@ export default function HomeScreen({ navigation }) {
                           />
                         </View>
                         <Text style={styles.trendBarLabel}>
-                          {i % 2 === 0 ? week.label : ''}
+                          {trends.weeks.length <= 4 || i % 2 === 0 ? week.label : ''}
                         </Text>
                       </View>
                     );
                   })}
                 </View>
 
-                {Number(trends.weeks[7]?.total) > 0 && (
+                {Number(trends.weeks[lastWeekIndex]?.total) > 0 && (
                   <Text style={styles.trendThisWeek}>
-                    This week: {fmt(trends.weeks[7].total)}
+                    This week: {fmt(trends.weeks[lastWeekIndex].total)}
+                  </Text>
+                )}
+
+                {isPro === false && (
+                  <Text style={styles.trendUpsell}>
+                    Showing last {trends.weeks.length} weeks —{' '}
+                    <Text style={styles.trendUpsellLink} onPress={() => navigation.navigate('Paywall')}>
+                      Upgrade to Pro
+                    </Text>
+                    {' '}for full history
                   </Text>
                 )}
               </View>
@@ -437,6 +459,8 @@ const styles = StyleSheet.create({
   trendBar:{ width:'60%', borderRadius:2 },
   trendBarLabel:{ fontSize:8, color:COLORS.inkFaint, textAlign:'center', marginTop:4 },
   trendThisWeek:{ fontSize:13, color:COLORS.accent, fontWeight:'600', marginTop:12, textAlign:'center' },
+  trendUpsell:{ fontSize:12, color:COLORS.inkLight, marginTop:8, textAlign:'center' },
+  trendUpsellLink:{ color:COLORS.accent, fontWeight:'600' },
   statsRow:{
     flexDirection:'row', gap:10,
     marginHorizontal:16, marginBottom:16,

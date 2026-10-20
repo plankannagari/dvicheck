@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -18,6 +19,11 @@ public interface BillRepository extends JpaRepository<Bill, UUID> {
 
     @Query("SELECT COUNT(b) FROM Bill b WHERE b.user.id = :userId AND b.purchaseDate >= :fromDate")
     long countBillsSince(@Param("userId") UUID userId, @Param("fromDate") LocalDate fromDate);
+
+    // Counts by createdAt (when the scan happened), not purchaseDate — purchaseDate comes from
+    // the receipt and is user-editable via PATCH /api/bills/{id}, so it can't back a scan limit.
+    @Query("SELECT COUNT(b) FROM Bill b WHERE b.user.id = :userId AND b.createdAt >= :since")
+    long countBillsCreatedSince(@Param("userId") UUID userId, @Param("since") Instant since);
 
     @Query("SELECT COALESCE(SUM(b.totalAmount), 0) FROM Bill b WHERE b.user.id = :userId AND b.purchaseDate >= :fromDate")
     BigDecimal sumTotalSince(@Param("userId") UUID userId, @Param("fromDate") LocalDate fromDate);

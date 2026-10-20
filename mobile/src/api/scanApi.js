@@ -2,11 +2,15 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
 import apiClient from './apiClient';
 
-export const uploadReceiptImage = async (imageUri, options = {}) => {
+// requestConfig is merged into the axios call — e.g. { skipPaywall: true } from
+// background callers so a 402 doesn't open the paywall (see apiClient.js).
+export const uploadReceiptImage = async (imageUri, options = {}, requestConfig = {}) => {
   try {
     const compressed = await manipulateAsync(
       imageUri,
-      [{ resize: { width: 1200 } }],
+      // 1600 (was 1200) keeps small print on long receipts sharper for OCR — Vision
+      // bills per image, not per pixel, so this costs nothing extra.
+      [{ resize: { width: 1600 } }],
       { compress: 0.8, format: SaveFormat.JPEG }
     );
 
@@ -35,6 +39,7 @@ export const uploadReceiptImage = async (imageUri, options = {}) => {
     const response = await apiClient.post('/bills/scan', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 30000,
+      ...requestConfig,
     });
     return response.data.data;
   } catch (error) {

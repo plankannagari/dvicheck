@@ -32,3 +32,16 @@ export async function restorePurchases() {
 export function isProFromCustomerInfo(customerInfo) {
   return customerInfo?.entitlements?.active?.dvicheck_pro != null;
 }
+
+// RevenueCat's on-device view of Pro — instant after a purchase, unlike the
+// backend's isPro, which waits on the webhook. Only for client-side decisions that
+// the backend re-checks anyway (e.g. retrying blocked scans); never throws.
+export async function isProOnDevice() {
+  try {
+    if (!(await Purchases.isConfigured())) return false;
+    return isProFromCustomerInfo(await Purchases.getCustomerInfo());
+  } catch (e) {
+    console.warn('isProOnDevice failed:', e);
+    return false;
+  }
+}

@@ -73,3 +73,6 @@ app:
       model: gemini-flash-latest
   ai:
     use-gemini-analyser: true  # set false to use Claude
+  monetization:
+    # Max bill scans per calendar month for non-Pro users — tune here, no code change.
+    free-scan-limit: 30

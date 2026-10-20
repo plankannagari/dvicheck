@@ -17,6 +17,7 @@ import com.dvicheck.backend.service.OcrService;
 import com.dvicheck.backend.service.PantryService;
 import com.dvicheck.backend.service.ReceiptParser;
 import com.dvicheck.backend.service.SpendingTrendsService;
+import com.dvicheck.backend.service.SubscriptionService;
 import com.dvicheck.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -58,6 +59,7 @@ BillScanController {
     private final PantryService pantryService;
     private final BudgetAlertService budgetAlertService;
     private final SpendingTrendsService spendingTrendsService;
+    private final SubscriptionService subscriptionService;
 
     @Value("${app.ai.use-gemini-analyser:false}")
     private boolean useGeminiAnalyser;
@@ -77,6 +79,7 @@ BillScanController {
 
         validateImage(image);
         User user = userService.findById(currentUserId());
+        subscriptionService.assertCanScan(user);
 
         byte[] bytes;
         try {

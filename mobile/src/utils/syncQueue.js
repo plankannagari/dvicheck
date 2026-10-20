@@ -9,6 +9,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { uploadReceiptImage } from '../api/scanApi';
 import useToastStore from '../store/toastStore';
 import useHomeStore from '../store/homeStore';
+import useProfileStore from '../store/profileStore';
+import { isProOnDevice } from './purchases';
 
 const QUEUE_KEY = 'dvicheck_pending_scans';
 const PENDING_DIR = FileSystem.documentDirectory + 'pending-receipts/';
@@ -79,6 +81,33 @@ export async function removeFromQueue(id) {
   }
 }
 
+// 'YYYY-MM' in device-local time. The backend's month boundary is server-local, so
+// near midnight on the 1st they can disagree briefly — harmless: worst case one
+// item is retried early, gets the 402 again, and is re-blocked.
+function currentPeriod() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// Clear `blocked` once the free scan limit no longer applies: the user is Pro, or a
+// new month has started — the limit is monthly, so a free user who just waits must
+// get their receipts synced. Pro is either source: profileStore's backend isPro, or
+// RevenueCat on-device (covers the few seconds after a purchase before the webhook
+// lands). Trusting the client here is safe — unblocking only allows a retry, and the
+// backend still enforces the limit; a wrong guess just re-blocks on the next 402.
+async function unblockIfLimitLifted() {
+  const queue = await getQueue();
+  if (!queue.some((q) => q.blocked)) return;
+  const isPro = useProfileStore.getState().profile?.isPro === true || await isProOnDevice();
+  const period = currentPeriod();
+  const updated = queue.map((q) =>
+    q.blocked && (isPro || q.blockedPeriod !== period)
+      ? { ...q, blocked: false, blockedPeriod: undefined }
+      : q
+  );
+  await persistQueue(updated);
+}
+
 let isProcessing = false;
 
 export async function processQueue() {
@@ -93,16 +122,34 @@ export async function processQueue() {
   let failed = 0;
 
   try {
+    await unblockIfLimitLifted();
     const queue = await getQueue();
 
     // Sequential, not parallel — avoids hammering the scan endpoint with
     // simultaneous multipart uploads right after a connection recovers.
     for (const item of queue) {
+      // Blocked by the free scan limit — no point re-uploading until it lifts
+      if (item.blocked) continue;
       try {
-        await uploadReceiptImage(item.imageUri, item.options);
+        await uploadReceiptImage(item.imageUri, item.options, { skipPaywall: true });
         await removeFromQueue(item.id);
         synced += 1;
       } catch (err) {
+        // 402 PRO_REQUIRED: not a transient failure, so no retryCount bump. Every
+        // remaining item would get the same 402, so block them all now rather than
+        // uploading each one just to be rejected, and stop.
+        if (err?.response?.status === 402) {
+          const lastError = err.response.data?.message || 'Upgrade required';
+          const remainingIds = new Set(queue.slice(queue.indexOf(item)).map((q) => q.id));
+          // Re-read for the same reason as below — never write back a stale snapshot
+          const current = await getQueue();
+          await persistQueue(current.map((q) =>
+            remainingIds.has(q.id) && !q.blocked
+              ? { ...q, blocked: true, blockedPeriod: currentPeriod(), lastError }
+              : q
+          ));
+          break;
+        }
         failed += 1;
         console.warn('processQueue: item failed, left queued for retry:', item.id, err);
         // Re-read before persisting rather than reusing the loop's `queue`
@@ -124,11 +171,19 @@ export async function processQueue() {
     }
 
     if (synced > 0) {
-      useToastStore.getState().showToast(
-        `${synced} receipt${synced !== 1 ? 's' : ''} synced`,
-        'success'
-      );
       useHomeStore.getState().loadDashboard().catch(() => {});
+    }
+
+    // One toast per run, not per item. Combined when both happened, since a
+    // second showToast() would just replace the first.
+    const blocked = (await getQueue()).filter((q) => q.blocked).length;
+    const syncedMsg = `${synced} receipt${synced !== 1 ? 's' : ''} synced`;
+    const blockedMsg = `${blocked} receipt${blocked !== 1 ? 's are' : ' is'} waiting — upgrade to Pro to sync them`;
+    if (blocked > 0) {
+      useToastStore.getState().showToast(
+        synced > 0 ? `${syncedMsg} · ${blockedMsg}` : blockedMsg, 'info', 4000);
+    } else if (synced > 0) {
+      useToastStore.getState().showToast(syncedMsg, 'success');
     }
   } finally {
     isProcessing = false;

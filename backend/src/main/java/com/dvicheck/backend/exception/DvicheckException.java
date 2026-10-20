@@ -28,4 +28,8 @@ public class DvicheckException extends RuntimeException {
     public static DvicheckException serviceUnavailable(String msg) {
         return new DvicheckException("SERVICE_UNAVAILABLE", msg);
     }
+
+    public static DvicheckException proRequired(String msg) {
+        return new DvicheckException("PRO_REQUIRED", msg);
+    }
 }

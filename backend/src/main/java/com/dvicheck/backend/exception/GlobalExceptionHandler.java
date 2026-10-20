@@ -20,6 +20,8 @@ public class GlobalExceptionHandler {
             case "NOT_FOUND"           -> HttpStatus.NOT_FOUND;
             case "UNAUTHORIZED"        -> HttpStatus.UNAUTHORIZED;
             case "SERVICE_UNAVAILABLE" -> HttpStatus.SERVICE_UNAVAILABLE;
+            // 402, not 403: the action is allowed, just not on the free plan
+            case "PRO_REQUIRED"        -> HttpStatus.PAYMENT_REQUIRED;
             default                    -> HttpStatus.BAD_REQUEST;
         };
         return ResponseEntity.status(status).body(ApiErrorResponse.of(ex.getErrorCode(), ex.getMessage()));

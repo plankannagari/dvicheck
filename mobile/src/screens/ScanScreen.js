@@ -183,6 +183,11 @@ export default function ScanScreen({ navigation }) {
       setPhase('result');
     } catch (err) {
       console.error('scan error:', err);
+      // apiClient's interceptor already opened the paywall for this — no toast on top
+      if (err.appError?.code === 'PRO_REQUIRED') {
+        setPhase('camera');
+        return;
+      }
       const message = err.appError?.message
         || 'Could not read this receipt. Try again with better lighting.';
       showToast(message, 'error');
@@ -194,7 +199,8 @@ export default function ScanScreen({ navigation }) {
     if (!cameraRef.current || isCapturing) return;
     setIsCapturing(true);
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
+      // Full quality — uploadReceiptImage does the one resize + compress pass.
+      const photo = await cameraRef.current.takePictureAsync({ quality: 1 });
       await handleScan(photo.uri);
     } catch (err) {
       console.error('capture error:', err);
@@ -212,7 +218,9 @@ export default function ScanScreen({ navigation }) {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      quality: 0.7,
+      // Full quality here — uploadReceiptImage already resizes + compresses once,
+      // so compressing at pick time too would just double the JPEG loss.
+      quality: 1,
     });
     if (!result.canceled && result.assets?.length) {
       await handleScan(result.assets[0].uri);
