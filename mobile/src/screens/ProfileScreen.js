@@ -9,6 +9,7 @@ import useProfileStore from '../store/profileStore';
 import useAuthStore from '../store/authStore';
 import useToastStore from '../store/toastStore';
 import Toast from '../components/Toast';
+import BudgetAlertsCard from '../components/BudgetAlertsCard';
 
 const CURRENCIES = ['USD', 'AUD', 'GBP', 'EUR', 'CAD', 'INR', 'SGD'];
 const MIN_HOUSEHOLD = 1;
@@ -32,6 +33,7 @@ export default function ProfileScreen({ navigation }) {
   const [budget, setBudget] = useState('');
   const initialized = useRef(false);
 
+  // Also refreshes budget alerts — loadProfile() chains loadBudgetAlerts() on success
   useEffect(() => { loadProfile(); }, []);
 
   useEffect(() => {
@@ -254,6 +256,8 @@ export default function ProfileScreen({ navigation }) {
               />
             </View>
           </View>
+
+          <BudgetAlertsCard navigation={navigation} />
 
           <Text style={styles.sectionLabel}>Account</Text>
           <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.8}>

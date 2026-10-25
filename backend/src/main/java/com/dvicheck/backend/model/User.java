@@ -59,6 +59,15 @@ public class User {
     @Column(name = "subscription_product_id")
     private String subscriptionProductId;
 
+    // Comma-separated percentages (e.g. "50,75,90,100"); null = default thresholds
+    @Column(name = "alert_thresholds")
+    private String alertThresholds;
+
+    // Primitive, so never null — no @Builder.Default or @PrePersist guard needed
+    // (Lombok getter is isPaceAlertsEnabled())
+    @Column(name = "pace_alerts_enabled", nullable = false)
+    private boolean paceAlertsEnabled;
+
     @Transient
     public boolean isPro() {
         return subscriptionExpiresAt != null && subscriptionExpiresAt.isAfter(Instant.now());

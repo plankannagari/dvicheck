@@ -33,6 +33,11 @@ public class BudgetAlertLog {
     @Column(name = "period_month", nullable = false)
     private String periodMonth;
 
+    // "THRESHOLD" or "PACE" (DB CHECK, V13); PACE rows store threshold 0
+    @Column(name = "alert_type", nullable = false)
+    @Builder.Default
+    private String alertType = "THRESHOLD";
+
     @Column(name = "sent_at")
     private Instant sentAt;
 

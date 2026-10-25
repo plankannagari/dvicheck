@@ -1,13 +1,16 @@
 package com.dvicheck.backend.controller;
 
 import com.dvicheck.backend.dto.ApiResponse;
+import com.dvicheck.backend.dto.BudgetAlertSettingsDto;
 import com.dvicheck.backend.dto.PushTokenRequest;
+import com.dvicheck.backend.dto.UpdateBudgetAlertSettingsRequest;
 import com.dvicheck.backend.dto.UpdatePreferencesRequest;
 import com.dvicheck.backend.dto.UserProfileDto;
 import com.dvicheck.backend.dto.UserResponse;
 import com.dvicheck.backend.dto.UserSyncRequest;
 import com.dvicheck.backend.exception.DvicheckException;
 import com.dvicheck.backend.model.User;
+import com.dvicheck.backend.service.BudgetAlertService;
 import com.dvicheck.backend.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +26,7 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+    private final BudgetAlertService budgetAlertService;
 
     @PostMapping("/sync")
     public ResponseEntity<ApiResponse<UserResponse>> sync(@Valid @RequestBody UserSyncRequest request) {
@@ -48,6 +52,17 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserProfileDto>> updatePreferences(
             @Valid @RequestBody UpdatePreferencesRequest request) {
         return ResponseEntity.ok(ApiResponse.ok(userService.updatePreferences(currentUserId(), request)));
+    }
+
+    @GetMapping("/me/budget-alerts")
+    public ResponseEntity<ApiResponse<BudgetAlertSettingsDto>> getBudgetAlertSettings() {
+        return ResponseEntity.ok(ApiResponse.ok(budgetAlertService.getSettings(currentUserId())));
+    }
+
+    @PutMapping("/me/budget-alerts")
+    public ResponseEntity<ApiResponse<BudgetAlertSettingsDto>> updateBudgetAlertSettings(
+            @Valid @RequestBody UpdateBudgetAlertSettingsRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(budgetAlertService.updateSettings(currentUserId(), request)));
     }
 
     @PostMapping("/me/push-token")

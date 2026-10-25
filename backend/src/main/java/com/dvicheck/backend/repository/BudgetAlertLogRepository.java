@@ -10,4 +10,7 @@ import java.util.UUID;
 public interface BudgetAlertLogRepository extends JpaRepository<BudgetAlertLog, UUID> {
 
     boolean existsByUserIdAndThresholdAndPeriodMonth(UUID userId, Integer threshold, String periodMonth);
+
+    boolean existsByUserIdAndAlertTypeAndThresholdAndPeriodMonth(
+        UUID userId, String alertType, Integer threshold, String periodMonth);
 }

@@ -30,6 +30,29 @@ export const completeOnboarding = async () => {
   }
 };
 
+// -> { isPro, thresholds, paceAlertsEnabled, allowedThresholds }
+export const fetchBudgetAlerts = async () => {
+  try {
+    const response = await apiClient.get('/users/me/budget-alerts');
+    return response.data.data;
+  } catch (error) {
+    console.error('fetchBudgetAlerts error:', error);
+    throw error;
+  }
+};
+
+// patch: { thresholds?, paceAlertsEnabled? } — omitted fields stay unchanged server-side.
+// Pro-only: a free user gets 402, which apiClient's interceptor turns into the paywall.
+export const updateBudgetAlerts = async (patch) => {
+  try {
+    const response = await apiClient.put('/users/me/budget-alerts', patch);
+    return response.data.data;
+  } catch (error) {
+    console.error('updateBudgetAlerts error:', error);
+    throw error;
+  }
+};
+
 // for future use — implement DELETE /users/me on the backend later
 export const deleteAccount = async () => {
   try {
