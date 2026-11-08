@@ -10,6 +10,7 @@ import useAuthStore from '../store/authStore';
 import useToastStore from '../store/toastStore';
 import Toast from '../components/Toast';
 import BudgetAlertsCard from '../components/BudgetAlertsCard';
+import MonthlyReportPdfCard from '../components/MonthlyReportPdfCard';
 
 const CURRENCIES = ['USD', 'AUD', 'GBP', 'EUR', 'CAD', 'INR', 'SGD'];
 const MIN_HOUSEHOLD = 1;
@@ -258,6 +259,8 @@ export default function ProfileScreen({ navigation }) {
           </View>
 
           <BudgetAlertsCard navigation={navigation} />
+
+          <MonthlyReportPdfCard navigation={navigation} />
 
           <Text style={styles.sectionLabel}>Account</Text>
           <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.8}>

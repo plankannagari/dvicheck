@@ -105,6 +105,12 @@
 			<artifactId>okhttp</artifactId>
 			<version>4.12.0</version>
 		</dependency>
+		<!-- PDF generation (Day 34 monthly report). LGPL-2.1 / MPL-2.0 — deliberately not iText (AGPL). -->
+		<dependency>
+			<groupId>com.github.librepdf</groupId>
+			<artifactId>openpdf</artifactId>
+			<version>3.0.5</version>
+		</dependency>
 	</dependencies>
 
 	<build>

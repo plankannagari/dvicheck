@@ -3,6 +3,7 @@ package com.dvicheck.backend.exception;
 import com.dvicheck.backend.dto.ApiErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -24,14 +25,13 @@ public class GlobalExceptionHandler {
             case "PRO_REQUIRED"        -> HttpStatus.PAYMENT_REQUIRED;
             default                    -> HttpStatus.BAD_REQUEST;
         };
-        return ResponseEntity.status(status).body(ApiErrorResponse.of(ex.getErrorCode(), ex.getMessage()));
+        return error(status, ex.getErrorCode(), ex.getMessage());
     }
 
     @ExceptionHandler(ExternalApiException.class)
     public ResponseEntity<ApiErrorResponse> handleExternalApi(ExternalApiException ex) {
         log.warn("External API failure: {}", ex.getMessage(), ex);
-        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                .body(ApiErrorResponse.of("EXTERNAL_AI_ERROR", ex.getMessage()));
+        return error(HttpStatus.BAD_GATEWAY, "EXTERNAL_AI_ERROR", ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -40,24 +40,32 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
                 .orElse("Validation failed");
-        return ResponseEntity.badRequest().body(ApiErrorResponse.of("VALIDATION_ERROR", message));
+        return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", message);
     }
 
     @ExceptionHandler(MissingServletRequestPartException.class)
     public ResponseEntity<ApiErrorResponse> handleMissingPart(MissingServletRequestPartException ex) {
-        return ResponseEntity.badRequest().body(ApiErrorResponse.of("VALIDATION_ERROR", ex.getMessage()));
+        return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage());
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(ApiErrorResponse.of("FORBIDDEN", "You don't have permission to do that."));
+        return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You don't have permission to do that.");
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleGeneric(Exception ex) {
         log.error("Unhandled exception", ex);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiErrorResponse.of("INTERNAL_ERROR", "Something went wrong. Please try again."));
+        return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "Something went wrong. Please try again.");
+    }
+
+    // Content-Type is set explicitly so Spring skips Accept-header negotiation. Without it, a
+    // client sending `Accept: application/pdf` (e.g. GET /api/reports/monthly/pdf) makes this
+    // JSON body "not acceptable" — Spring then falls back to its /error dispatch, which
+    // Spring Security rejects, and the client sees a misleading 401 instead of 402/404/400.
+    private static ResponseEntity<ApiErrorResponse> error(HttpStatus status, String code, String message) {
+        return ResponseEntity.status(status)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(ApiErrorResponse.of(code, message));
     }
 }

@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,26 +34,38 @@ public class MonthlyReportService {
     private final LineItemRepository lineItemRepository;
     private final UserRepository userRepository;
 
+    // Not cached, deliberately: BudgetAlertService calls this right after every bill save
+    // and needs current numbers to detect threshold crossings.
     @Transactional(readOnly = true)
     public MonthlyReportDto getMonthlyReport(UUID userId) {
-        LocalDate today = LocalDate.now();
-        LocalDate monthStart = today.withDayOfMonth(1);
-        LocalDate prevMonthStart = monthStart.minusMonths(1);
-        LocalDate prevMonthEnd = monthStart.minusDays(1);
+        return getMonthlyReport(userId, YearMonth.now());
+    }
 
-        BigDecimal totalSpent = billRepository.sumTotalBetween(userId, monthStart, today);
+    @Transactional(readOnly = true)
+    public MonthlyReportDto getMonthlyReport(UUID userId, YearMonth month) {
+        // Every query below is `purchaseDate BETWEEN :from AND :to` — INCLUSIVE on both ends —
+        // so the end is the month's last day, never the 1st of the next month (that would
+        // pull in next month's day-1 bills). The current month is still capped at today,
+        // exactly as before, so GET /api/reports/monthly (monthEnd = today) is unchanged.
+        LocalDate monthStart = month.atDay(1);
+        LocalDate monthEnd = month.equals(YearMonth.now()) ? LocalDate.now() : month.atEndOfMonth();
+        YearMonth prevMonth = month.minusMonths(1);
+        LocalDate prevMonthStart = prevMonth.atDay(1);
+        LocalDate prevMonthEnd = prevMonth.atEndOfMonth();
+
+        BigDecimal totalSpent = billRepository.sumTotalBetween(userId, monthStart, monthEnd);
         BigDecimal prevMonthTotal = billRepository.sumTotalBetween(userId, prevMonthStart, prevMonthEnd);
-        BigDecimal avoidableSpend = billRepository.sumAvoidableBetween(userId, monthStart, today);
-        long billsScanned = billRepository.countBillsBetween(userId, monthStart, today);
+        BigDecimal avoidableSpend = billRepository.sumAvoidableBetween(userId, monthStart, monthEnd);
+        long billsScanned = billRepository.countBillsBetween(userId, monthStart, monthEnd);
 
         double vsLastMonthPercent = calculatePercentChange(totalSpent, prevMonthTotal).doubleValue();
 
         List<LineItem> thisMonthItems = lineItemRepository
-            .findByBillUserIdAndBillPurchaseDateBetween(userId, monthStart, today);
+            .findByBillUserIdAndBillPurchaseDateBetween(userId, monthStart, monthEnd);
         Map<String, BigDecimal> spendByCategory = spendByCategory(thisMonthItems);
 
         List<Object[]> storeRows = billRepository.findStoreTotalsBetween(
-            userId, monthStart, today, PageRequest.of(0, TOP_STORES_LIMIT));
+            userId, monthStart, monthEnd, PageRequest.of(0, TOP_STORES_LIMIT));
         List<MonthlyReportDto.StoreTotal> topStores = storeRows.stream()
             .map(row -> new MonthlyReportDto.StoreTotal(
                 (String) row[0],
@@ -60,6 +73,9 @@ public class MonthlyReportService {
                 ((Number) row[2]).intValue()))
             .toList();
 
+        // Always the user's CURRENT budget_amount — there is no budget history, so for a
+        // past month budgetUsedPercent compares that month's spend to today's budget, not
+        // whatever the budget was at the time.
         BigDecimal budgetAmount = userRepository.findById(userId)
             .map(User::getBudgetAmount)
             .orElse(null);
@@ -70,7 +86,7 @@ public class MonthlyReportService {
 
         return new MonthlyReportDto(
             monthStart,
-            today,
+            monthEnd,
             totalSpent,
             avoidableSpend,
             budgetAmount,
