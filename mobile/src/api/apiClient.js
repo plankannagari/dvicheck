@@ -25,11 +25,13 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     // 402 PRO_REQUIRED — a free-plan limit was hit. Say why, then open the paywall,
-    // unless the caller opted out (background work like the offline sync queue must
-    // never pop a screen the user didn't ask for), and don't stack a second one.
-    // No early return: falls through so appError is still set below — screens and
-    // syncQueue check appError.code === 'PRO_REQUIRED'.
-    if (error.response?.status === 402 && !error.config?.skipPaywall) {
+    // unless the caller opted out, and don't stack a second one.
+    // Requests that are background/passive (not triggered by a user tapping an
+    // upgrade-gated action — e.g. the offline sync queue, silent refreshes) must set
+    // { skipPaywallRedirect: true } so they never pop a screen the user didn't ask for.
+    // No early return: falls through so appError is still set and the original error
+    // is rejected below — callers can still read error.response.status / appError.code.
+    if (error.response?.status === 402 && !error.config?.skipPaywallRedirect) {
       useToastStore.getState().showToast(
         error.response.data?.message || 'Upgrade to Pro to continue', 'info');
       if (navigationRef.isReady() && navigationRef.getCurrentRoute()?.name !== 'Paywall') {

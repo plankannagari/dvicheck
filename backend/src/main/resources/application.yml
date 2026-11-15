@@ -76,3 +76,8 @@ app:
   monetization:
     # Max bill scans per calendar month for non-Pro users — tune here, no code change.
     free-scan-limit: 30
+  coach:
+    # Pro weekly AI coach (Day 35). enabled=false skips the job entirely (no AI calls, no pushes).
+    enabled: true
+    cron: "0 0 14 * * MON"      # Monday 14:00 UTC
+    zone: UTC

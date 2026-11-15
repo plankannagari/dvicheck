@@ -6,8 +6,10 @@ import {
 
 import { COLORS } from '../constants';
 import useInsightsStore from '../store/insightsStore';
+import useProfileStore from '../store/profileStore';
 import EmptyState from '../components/EmptyState';
 import SkeletonList from '../components/SkeletonList';
+import WeeklyCoachCard from '../components/WeeklyCoachCard';
 
 const CATEGORY_ORDER = ['ESSENTIAL', 'REDUCIBLE', 'AVOIDABLE', 'DUPLICATE'];
 const CATEGORY_META = {
@@ -29,8 +31,25 @@ const fmtDateRange = (start, end) => {
 
 export default function InsightsScreen({ navigation }) {
   const { insights, isLoading, error, loadInsights } = useInsightsStore();
+  const loadCoach = useInsightsStore((s) => s.loadCoach);
 
-  useEffect(() => { loadInsights(); }, []);
+  // Coach needs isPro. If the profile isn't loaded yet, loadProfile() loads it and then
+  // refreshes the coach itself (chained in profileStore), so no locked-card flash
+  const refreshCoach = () => {
+    const { profile, loadProfile } = useProfileStore.getState();
+    if (profile) loadCoach(profile.isPro === true);
+    else loadProfile();
+  };
+
+  useEffect(() => {
+    loadInsights();
+    refreshCoach();
+  }, []);
+
+  const handleRefresh = () => {
+    loadInsights();
+    refreshCoach();
+  };
 
   const isFirstLoad = isLoading && insights === null;
   const isEmpty = insights && Number(insights.totalSpent) === 0;
@@ -56,9 +75,13 @@ export default function InsightsScreen({ navigation }) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isLoading} onRefresh={loadInsights} tintColor={COLORS.accent} />
+          <RefreshControl refreshing={isLoading} onRefresh={handleRefresh} tintColor={COLORS.accent} />
         }
       >
+        {/* Above the loading/error/empty branches: the coach covers LAST week, so it
+            still shows early in a week when this week's insights are empty */}
+        <WeeklyCoachCard navigation={navigation} />
+
         {isFirstLoad ? (
           <SkeletonList count={3} cardHeight={100} />
         ) : error ? (

@@ -3,6 +3,7 @@ import {
   fetchMe, updatePreferences, fetchBudgetAlerts, updateBudgetAlerts,
 } from '../api/userApi';
 import useToastStore from './toastStore';
+import useInsightsStore from './insightsStore';
 
 const useProfileStore = create((set, get) => ({
   profile: null,
@@ -21,6 +22,9 @@ const useProfileStore = create((set, get) => ({
       // also refreshes budget alerts (their isPro/thresholds follow the profile's).
       // Fire-and-forget; loadBudgetAlerts never throws.
       get().loadBudgetAlerts();
+      // Same for the weekly coach card (Day 35): unlocks/locks as soon as isPro changes.
+      // Free users make no network call (loadCoach short-circuits); never throws.
+      useInsightsStore.getState().loadCoach(result?.isPro === true);
     } catch (error) {
       console.error('loadProfile error:', error);
       set({ error: 'Could not load your profile.', isLoading: false });

@@ -2,7 +2,7 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
 import apiClient from './apiClient';
 
-// requestConfig is merged into the axios call — e.g. { skipPaywall: true } from
+// requestConfig is merged into the axios call — e.g. { skipPaywallRedirect: true } from
 // background callers so a 402 doesn't open the paywall (see apiClient.js).
 export const uploadReceiptImage = async (imageUri, options = {}, requestConfig = {}) => {
   try {

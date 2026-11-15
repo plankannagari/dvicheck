@@ -131,7 +131,7 @@ export async function processQueue() {
       // Blocked by the free scan limit — no point re-uploading until it lifts
       if (item.blocked) continue;
       try {
-        await uploadReceiptImage(item.imageUri, item.options, { skipPaywall: true });
+        await uploadReceiptImage(item.imageUri, item.options, { skipPaywallRedirect: true });
         await removeFromQueue(item.id);
         synced += 1;
       } catch (err) {
