@@ -11,6 +11,7 @@ import useToastStore from '../store/toastStore';
 import useHomeStore from '../store/homeStore';
 import useProfileStore from '../store/profileStore';
 import { isProOnDevice } from './purchases';
+import { track, EVENTS } from '../analytics/analytics';
 
 const QUEUE_KEY = 'dvicheck_pending_scans';
 const PENDING_DIR = FileSystem.documentDirectory + 'pending-receipts/';
@@ -120,6 +121,7 @@ export async function processQueue() {
 
   let synced = 0;
   let failed = 0;
+  let attempted = 0; // analytics only: skip the event for runs that uploaded nothing
 
   try {
     await unblockIfLimitLifted();
@@ -130,6 +132,7 @@ export async function processQueue() {
     for (const item of queue) {
       // Blocked by the free scan limit — no point re-uploading until it lifts
       if (item.blocked) continue;
+      attempted += 1;
       try {
         await uploadReceiptImage(item.imageUri, item.options, { skipPaywallRedirect: true });
         await removeFromQueue(item.id);
@@ -169,6 +172,8 @@ export async function processQueue() {
         await persistQueue(updated);
       }
     }
+
+    if (attempted > 0) track(EVENTS.OFFLINE_QUEUE_FLUSHED, { item_count: synced });
 
     if (synced > 0) {
       useHomeStore.getState().loadDashboard().catch(() => {});

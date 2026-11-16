@@ -292,7 +292,7 @@ export default function HomeScreen({ navigation }) {
                 {isPro === false && (
                   <Text style={styles.trendUpsell}>
                     Showing last {trends.weeks.length} weeks —{' '}
-                    <Text style={styles.trendUpsellLink} onPress={() => navigation.navigate('Paywall')}>
+                    <Text style={styles.trendUpsellLink} onPress={() => navigation.navigate('Paywall', { source: 'trends' })}>
                       Upgrade to Pro
                     </Text>
                     {' '}for full history

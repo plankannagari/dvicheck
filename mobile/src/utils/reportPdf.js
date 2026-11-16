@@ -7,6 +7,7 @@ import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../constants';
 import { navigate, navigationRef } from '../navigation/navigationRef';
 import useToastStore from '../store/toastStore';
+import { track, EVENTS } from '../analytics/analytics';
 
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 
@@ -57,9 +58,10 @@ export async function downloadAndShareMonthlyPdf(month) {
 
     if (res.status === 402) {
       // Same as apiClient's Day 32 402 branch: toast, then Paywall without stacking
+      track(EVENTS.PRO_GATE_HIT, { feature: 'pdf_report' }); // bypasses axios, so apiClient never sees this 402
       useToastStore.getState().showToast(message || 'Upgrade to Pro to continue', 'info');
       if (navigationRef.isReady() && navigationRef.getCurrentRoute()?.name !== 'Paywall') {
-        navigate('Paywall');
+        navigate('Paywall', { source: 'pdf_report' });
       }
       return { ok: false, reason: 'pro', message: message || undefined };
     }
@@ -77,6 +79,8 @@ export async function downloadAndShareMonthlyPdf(month) {
   }
 
   try {
+    // Fired before the await: on iOS shareAsync only resolves once the sheet is dismissed
+    track(EVENTS.PDF_REPORT_GENERATED);
     await Sharing.shareAsync(res.uri, {
       mimeType: 'application/pdf',
       UTI: 'com.adobe.pdf',

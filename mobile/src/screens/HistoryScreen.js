@@ -11,6 +11,7 @@ import useHistoryStore from '../store/historyStore';
 import useToastStore from '../store/toastStore';
 import EmptyState from '../components/EmptyState';
 import { submitFeedback } from '../api/feedbackApi';
+import { track, EVENTS } from '../analytics/analytics';
 
 // RESTAURANT was in the original spec but isn't a valid BillType — the Java enum and the
 // bills.bill_type DB CHECK constraint only allow these three.
@@ -144,7 +145,9 @@ export default function HistoryScreen() {
     const message = 'I spent ' + fmt(activeBill.totalAmount) + ' at ' +
       activeBill.storeName + avoidable + '.\n\nView the receipt: ' + deepLink;
     try {
-      await Share.share({ message, url: deepLink, title: 'dvicheck receipt' });
+      const shareResult = await Share.share({ message, url: deepLink, title: 'dvicheck receipt' });
+      // Only when actually shared (iOS reports dismissals); fixed label, not iOS's activityType
+      if (shareResult?.action === Share.sharedAction) track(EVENTS.RECEIPT_SHARED, { method: 'share_sheet' });
     } catch (e) {
       console.warn('Share failed:', e);
     }

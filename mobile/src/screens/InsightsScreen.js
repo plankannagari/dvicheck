@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, StyleSheet, SafeAreaView, StatusBar,
   ScrollView, RefreshControl, TouchableOpacity,
@@ -10,6 +11,7 @@ import useProfileStore from '../store/profileStore';
 import EmptyState from '../components/EmptyState';
 import SkeletonList from '../components/SkeletonList';
 import WeeklyCoachCard from '../components/WeeklyCoachCard';
+import { track, EVENTS } from '../analytics/analytics';
 
 const CATEGORY_ORDER = ['ESSENTIAL', 'REDUCIBLE', 'AVOIDABLE', 'DUPLICATE'];
 const CATEGORY_META = {
@@ -32,6 +34,18 @@ const fmtDateRange = (start, end) => {
 export default function InsightsScreen({ navigation }) {
   const { insights, isLoading, error, loadInsights } = useInsightsStore();
   const loadCoach = useInsightsStore((s) => s.loadCoach);
+  const coachStatus = useInsightsStore((s) => s.coachStatus);
+
+  // COACH_VIEWED once per focus: fires when a coach message is (or becomes) visible
+  // while focused; the flag resets on blur, and a pull-to-refresh doesn't re-fire it
+  const coachViewedThisFocus = useRef(false);
+  useFocusEffect(useCallback(() => () => { coachViewedThisFocus.current = false; }, []));
+  useFocusEffect(useCallback(() => {
+    if (coachStatus === 'ready' && !coachViewedThisFocus.current) {
+      coachViewedThisFocus.current = true;
+      track(EVENTS.COACH_VIEWED);
+    }
+  }, [coachStatus]));
 
   // Coach needs isPro. If the profile isn't loaded yet, loadProfile() loads it and then
   // refreshes the coach itself (chained in profileStore), so no locked-card flash

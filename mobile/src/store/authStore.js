@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { registerForPushToken } from '../utils/notifications';
 import { initPurchases } from '../utils/purchases';
+import {
+  identify, reset as resetAnalytics, track, EVENTS,
+} from '../analytics/analytics';
 
 const useAuthStore = create((set) => ({
   user: null,
@@ -21,6 +24,9 @@ const useAuthStore = create((set) => ({
     }
     registerForPushToken(); // fire and forget — no await needed
     initPurchases(userId).catch(() => {}); // fire and forget — same pattern as push token registration
+    // Analytics identity = the backend user UUID only (never `phone`). Never throws.
+    identify(userId);
+    track(EVENTS.LOGIN_COMPLETED, { method: 'phone_otp' });
     set({
       user: { userId, phone },
       accessToken,
@@ -30,6 +36,10 @@ const useAuthStore = create((set) => ({
   },
 
   clearAuth: async () => {
+    // Logout event goes out under the current identity, THEN reset so the next
+    // user on this device doesn't inherit it. Both never throw.
+    track(EVENTS.LOGOUT);
+    resetAnalytics();
     try {
       await SecureStore.deleteItemAsync('access_token');
       await SecureStore.deleteItemAsync('refresh_token');
@@ -52,6 +62,7 @@ const useAuthStore = create((set) => ({
       const stored = await SecureStore.getItemAsync('onboarding_completed');
       if (token && userId) {
         initPurchases(userId).catch(() => {}); // fire and forget — same pattern as push token registration
+        identify(userId); // session restore: re-identify, no LOGIN_COMPLETED event
         set({
           accessToken: token,
           user: { userId },

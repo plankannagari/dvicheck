@@ -11,6 +11,8 @@ import useToastStore from '../store/toastStore';
 import Toast from '../components/Toast';
 import BudgetAlertsCard from '../components/BudgetAlertsCard';
 import MonthlyReportPdfCard from '../components/MonthlyReportPdfCard';
+import PrivacyCard from '../components/PrivacyCard';
+import { track, EVENTS } from '../analytics/analytics';
 
 const CURRENCIES = ['USD', 'AUD', 'GBP', 'EUR', 'CAD', 'INR', 'SGD'];
 const MIN_HOUSEHOLD = 1;
@@ -73,6 +75,7 @@ export default function ProfileScreen({ navigation }) {
         notificationsEnabled,
         budgetAmount,
       });
+      if (budgetChanged) track(EVENTS.BUDGET_SET, { enabled: budgetAmount != null }); // never the amount
       showToast('Preferences saved', 'success');
     } catch (err) {
       showToast(err.appError?.message || 'Could not save preferences.', 'error');
@@ -162,7 +165,7 @@ export default function ProfileScreen({ navigation }) {
           ) : (
           <TouchableOpacity
             style={styles.upgradeBtn}
-            onPress={() => navigation.navigate('Paywall')}
+            onPress={() => navigation.navigate('Paywall', { source: 'profile' })}
             activeOpacity={0.8}
           >
             <Text style={styles.upgradeBtnText}>✨ Upgrade to Pro</Text>
@@ -261,6 +264,8 @@ export default function ProfileScreen({ navigation }) {
           <BudgetAlertsCard navigation={navigation} />
 
           <MonthlyReportPdfCard navigation={navigation} />
+
+          <PrivacyCard />
 
           <Text style={styles.sectionLabel}>Account</Text>
           <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.8}>

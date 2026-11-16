@@ -15,8 +15,21 @@ import useHomeStore from '../store/homeStore';
 import useHistoryStore from '../store/historyStore';
 import useNetworkStore from '../store/networkStore';
 import Toast from '../components/Toast';
+import { track, EVENTS } from '../analytics/analytics';
 
 const CATEGORY_ORDER = ['ESSENTIAL', 'REDUCIBLE', 'AVOIDABLE', 'DUPLICATE'];
+
+// Analytics bucket for a failed scan — codes/statuses only, never the message text.
+// 400 = unreadable image / no text (OcrService), 503 = Vision unavailable,
+// 500 = server-side failure after OCR. Parser failures fall back silently server-side.
+function scanErrorType(err) {
+  if (err?.appError?.code === 'PRO_REQUIRED') return 'cap';
+  if (err?.appError?.isNetworkError) return 'network';
+  const status = err?.response?.status;
+  if (status === 400 || status === 503) return 'ocr';
+  if (status === 500) return 'parse';
+  return 'other';
+}
 
 const CATEGORY_META = {
   ESSENTIAL: { label: 'Essential', dot: COLORS.green, bg: COLORS.greenLight, text: COLORS.green },
@@ -161,11 +174,13 @@ export default function ScanScreen({ navigation }) {
     };
   }, [phase]);
 
-  const handleScan = async (uri) => {
+  const handleScan = async (uri, source) => {
+    track(EVENTS.SCAN_STARTED, { source });
     if (!isConnected) {
       setPhase('queued');
       try {
         await addToQueue(uri);
+        track(EVENTS.SCAN_QUEUED_OFFLINE);
         showToast("Saved offline — we'll scan it once you're back online", 'info', 3000);
       } catch (e) {
         showToast('Could not save receipt offline. Try again.', 'error');
@@ -177,12 +192,15 @@ export default function ScanScreen({ navigation }) {
     }
 
     setPhase('processing');
+    const startedAt = Date.now();
     try {
       const bill = await uploadReceiptImage(uri);
+      track(EVENTS.SCAN_SUCCEEDED, { item_count: bill?.lineItems?.length ?? 0, duration_ms: Date.now() - startedAt });
       setScanResult(bill);
       setPhase('result');
     } catch (err) {
       console.error('scan error:', err);
+      track(EVENTS.SCAN_FAILED, { error_type: scanErrorType(err) });
       // apiClient's interceptor already opened the paywall for this — no toast on top
       if (err.appError?.code === 'PRO_REQUIRED') {
         setPhase('camera');
@@ -201,7 +219,7 @@ export default function ScanScreen({ navigation }) {
     try {
       // Full quality — uploadReceiptImage does the one resize + compress pass.
       const photo = await cameraRef.current.takePictureAsync({ quality: 1 });
-      await handleScan(photo.uri);
+      await handleScan(photo.uri, 'camera');
     } catch (err) {
       console.error('capture error:', err);
       showToast('Could not capture photo. Try again.', 'error');
@@ -223,7 +241,7 @@ export default function ScanScreen({ navigation }) {
       quality: 1,
     });
     if (!result.canceled && result.assets?.length) {
-      await handleScan(result.assets[0].uri);
+      await handleScan(result.assets[0].uri, 'gallery');
     }
   };
 

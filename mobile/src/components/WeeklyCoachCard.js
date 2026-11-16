@@ -66,7 +66,7 @@ export default function WeeklyCoachCard({ navigation }) {
 
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate('Paywall')}
+          onPress={() => navigation.navigate('Paywall', { source: 'coach' })}
           activeOpacity={0.8}
         >
           <Text style={styles.buttonText}>Unlock weekly coach</Text>

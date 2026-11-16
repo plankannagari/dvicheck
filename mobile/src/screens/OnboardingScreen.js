@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   FlatList, Dimensions, SafeAreaView, StatusBar,
@@ -8,6 +8,7 @@ import { COLORS } from '../constants';
 import { completeOnboarding } from '../api/userApi';
 import useAuthStore from '../store/authStore';
 import { consumeAndProcessPendingDeepLink } from '../utils/deepLinking';
+import { track, EVENTS } from '../analytics/analytics';
 
 const { width } = Dimensions.get('window');
 
@@ -36,7 +37,12 @@ export default function OnboardingScreen({ navigation }) {
 
   const isLast = index === SLIDES.length - 1;
 
+  // Fires for the first slide on mount, then on every Next tap or swipe
+  useEffect(() => { track(EVENTS.ONBOARDING_STEP_VIEWED, { step: String(index) }); }, [index]);
+
   const handleFinish = async () => {
+    // Skip and Get Started share this handler; Skip is hidden on the last slide
+    track(EVENTS.ONBOARDING_COMPLETED, { result: isLast ? 'finished' : 'skipped' });
     try {
       await completeOnboarding();
     } catch (err) {

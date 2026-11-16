@@ -11,8 +11,9 @@ import Toast from '../components/Toast';
 import {
   getCurrentOffering, purchasePackage, restorePurchases, isProFromCustomerInfo,
 } from '../utils/purchases';
+import { track, EVENTS } from '../analytics/analytics';
 
-export default function PaywallScreen({ navigation }) {
+export default function PaywallScreen({ navigation, route }) {
   const [offering, setOffering] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [purchasingId, setPurchasingId] = useState(null);
@@ -22,6 +23,8 @@ export default function PaywallScreen({ navigation }) {
   } = useToastStore();
 
   useEffect(() => {
+    // source = a fixed label set by the call site (route.params), never user data
+    track(EVENTS.PAYWALL_VIEWED, { source: route?.params?.source || 'unknown' });
     (async () => {
       try {
         const current = await getCurrentOffering();
@@ -37,9 +40,11 @@ export default function PaywallScreen({ navigation }) {
 
   const handlePurchase = async (pkg) => {
     setPurchasingId(pkg.identifier);
+    track(EVENTS.PURCHASE_STARTED, { package_type: pkg.packageType });
     try {
       const customerInfo = await purchasePackage(pkg);
       if (isProFromCustomerInfo(customerInfo)) {
+        track(EVENTS.PURCHASE_COMPLETED, { package_type: pkg.packageType });
         showToast('Welcome to dvicheck Pro!', 'success');
         // Fire-and-forget: refresh profileStore so isPro reflects the purchase as soon
         // as the RevenueCat webhook has had a moment to land, rather than waiting for
@@ -49,7 +54,11 @@ export default function PaywallScreen({ navigation }) {
         navigation.goBack();
       }
     } catch (e) {
-      if (!e.userCancelled) {
+      if (e.userCancelled) {
+        track(EVENTS.PURCHASE_CANCELLED, { package_type: pkg.packageType });
+      } else {
+        // RevenueCat's enum name (e.g. 'NetworkError'), not its message text
+        track(EVENTS.PURCHASE_FAILED, { error_type: e?.userInfo?.readableErrorCode || 'unknown' });
         showToast('Purchase failed. Please try again.', 'error');
       }
     } finally {
@@ -62,6 +71,7 @@ export default function PaywallScreen({ navigation }) {
     try {
       const customerInfo = await restorePurchases();
       const isPro = isProFromCustomerInfo(customerInfo);
+      track(EVENTS.RESTORE_COMPLETED, { result: isPro ? 'restored' : 'nothing' });
       showToast(
         isPro ? 'Pro access restored!' : 'No active subscription found',
         isPro ? 'success' : 'info'

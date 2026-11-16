@@ -66,7 +66,7 @@ export default function MonthlyReportPdfCard({ navigation }) {
         <Text style={styles.sectionLabel}>Reports</Text>
         <TouchableOpacity
           style={[styles.card, styles.row]}
-          onPress={() => navigation.navigate('Paywall')}
+          onPress={() => navigation.navigate('Paywall', { source: 'pdf_report' })}
           activeOpacity={0.7}
         >
           <View style={styles.meta}>

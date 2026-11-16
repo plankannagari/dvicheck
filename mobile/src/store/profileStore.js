@@ -4,6 +4,7 @@ import {
 } from '../api/userApi';
 import useToastStore from './toastStore';
 import useInsightsStore from './insightsStore';
+import { setProStatus } from '../analytics/analytics';
 
 const useProfileStore = create((set, get) => ({
   profile: null,
@@ -17,6 +18,9 @@ const useProfileStore = create((set, get) => ({
     try {
       const result = await fetchMe();
       set({ profile: result, isLoading: false });
+      // Covers mount loads and PaywallScreen's post-purchase/restore refresh (both call
+      // loadProfile). Backend isPro is authoritative; never throws.
+      setProStatus(result?.isPro === true);
       // Chained here rather than at each call site, so every profile refresh —
       // Home/Profile mount and PaywallScreen's post-purchase/restore refresh —
       // also refreshes budget alerts (their isPro/thresholds follow the profile's).
@@ -71,6 +75,7 @@ const useProfileStore = create((set, get) => ({
     try {
       const result = await updatePreferences(prefs);
       set({ profile: result, isSaving: false });
+      setProStatus(result?.isPro === true); // PATCH response is a full profile too
     } catch (error) {
       console.error('savePreferences error:', error);
       set({ error: 'Could not save your preferences.', isSaving: false });

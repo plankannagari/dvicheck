@@ -90,7 +90,7 @@ export default function BudgetAlertsCard({ navigation }) {
         ) : (
           <TouchableOpacity
             style={[styles.row, styles.rowLast]}
-            onPress={() => navigation.navigate('Paywall')}
+            onPress={() => navigation.navigate('Paywall', { source: 'budget_alerts' })}
             activeOpacity={0.7}
           >
             <View style={styles.upsellMeta}>

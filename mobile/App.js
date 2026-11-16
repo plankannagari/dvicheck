@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -26,6 +26,7 @@ import SplashScreen from './src/screens/SplashScreen';
 import { handleIncomingUrl, setPendingDeepLink } from './src/utils/deepLinking';
 import useAuthStore from './src/store/authStore';
 import { initNetworkListener } from './src/store/networkStore';
+import { initAnalytics, track, EVENTS } from './src/analytics/analytics';
 
 ExpoSplashScreen.preventAutoHideAsync();
 
@@ -37,6 +38,10 @@ Linking.getInitialURL().then((url) => {
 });
 
 initNetworkListener();
+
+// Fire-and-forget at module load — never awaited, so it can't delay rendering or the
+// splash handoff. Calls made before init resolves are queued inside the analytics module.
+initAnalytics().then(() => track(EVENTS.APP_OPENED));
 
 const Stack = createStackNavigator();
 
@@ -57,10 +62,32 @@ export default function App() {
     return () => sub.remove();
   }, []);
 
+  // Screen tracking (Day 36). Route NAMES only — never route params, which can carry
+  // bill ids or amounts. getCurrentRoute() is the focused leaf route, so tab switches
+  // inside MainApp report 'Home'/'Scan'/... rather than 'MainApp'.
+  const previousRouteName = useRef(undefined);
+
+  const onNavigationReady = useCallback(() => {
+    previousRouteName.current = navigationRef.getCurrentRoute()?.name;
+  }, []);
+
+  const onNavigationStateChange = useCallback(() => {
+    const current = navigationRef.getCurrentRoute()?.name;
+    const previous = previousRouteName.current;
+    if (current && current !== previous) {
+      track(EVENTS.SCREEN_VIEWED, { screen: current, previous_screen: previous });
+      previousRouteName.current = current;
+    }
+  }, []);
+
   return (
     <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
       <ErrorBoundary>
-        <NavigationContainer ref={navigationRef}>
+        <NavigationContainer
+          ref={navigationRef}
+          onReady={onNavigationReady}
+          onStateChange={onNavigationStateChange}
+        >
           <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Splash" component={SplashScreen} />
             <Stack.Screen name="Onboarding" component={OnboardingScreen} />

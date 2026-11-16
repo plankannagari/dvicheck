@@ -3,6 +3,7 @@ import {
   fetchLists, createList as createListApi, fetchListDetail,
   addItem as addItemApi, toggleItem as toggleItemApi, deleteItem as deleteItemApi,
 } from '../api/shoppingApi';
+import { track, EVENTS } from '../analytics/analytics';
 
 const useShoppingStore = create((set, get) => ({
   lists: [],
@@ -26,6 +27,7 @@ const useShoppingStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const list = await createListApi(name);
+      track(EVENTS.SHOPPING_LIST_CREATED); // never the list name
       set((state) => ({
         lists: [list, ...state.lists],
         activeList: list,

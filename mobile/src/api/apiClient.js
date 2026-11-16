@@ -4,6 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../constants';
 import { navigate, navigationRef } from '../navigation/navigationRef';
 import useToastStore from '../store/toastStore';
+import { track, EVENTS, proGateFeature } from '../analytics/analytics';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -32,10 +33,12 @@ apiClient.interceptors.response.use(
     // No early return: falls through so appError is still set and the original error
     // is rejected below — callers can still read error.response.status / appError.code.
     if (error.response?.status === 402 && !error.config?.skipPaywallRedirect) {
+      const feature = proGateFeature(error.config?.url);
+      track(EVENTS.PRO_GATE_HIT, { feature });
       useToastStore.getState().showToast(
         error.response.data?.message || 'Upgrade to Pro to continue', 'info');
       if (navigationRef.isReady() && navigationRef.getCurrentRoute()?.name !== 'Paywall') {
-        navigate('Paywall');
+        navigate('Paywall', { source: feature });
       }
     }
 
