@@ -43,6 +43,8 @@ and cuts strings to 40 characters. In dev builds it warns once for each dropped 
 | `notification_opened` | The user taps a push notification | `type` (`BUDGET_ALERT` \| `WEEKLY_COACH` \| `unknown`) |
 | `coach_viewed` | A weekly coach message is visible on Insights; at most once each time Insights is focused | — |
 | `pdf_report_generated` | The monthly PDF share sheet opens | — |
+| `referral_shared` | The invite code is copied, or the invite is shared from Invite friends (only when the share completes). Never the code itself | `method` (`copy` \| `share_sheet`) |
+| `referral_redeemed` | After any invite-code redeem attempt, typed in or from a `dvicheck://invite/` link. Never the code itself | `result` (`ok` \| `invalid` = the server refused it, 4xx \| `error` = network/5xx), `source` (`manual` \| `deep_link`) |
 
 ## Allowed properties
 
@@ -50,11 +52,11 @@ and cuts strings to 40 characters. In dev builds it warns once for each dropped 
 |---|---|
 | `screen` | Route name now focused (names only, never route params) |
 | `previous_screen` | Route name focused before |
-| `source` | What started the action: the scan input, or the screen or feature that opened the paywall |
+| `source` | What started the action: the scan input, the screen or feature that opened the paywall, or how an invite code was entered (`manual` / `deep_link`) |
 | `feature` | Which Pro gate returned 402 |
 | `reason` | A short fixed reason code (allowed, not used yet) |
 | `step` | Onboarding slide index |
-| `method` | How something was done (`phone_otp`, `share_sheet`) |
+| `method` | How something was done (`phone_otp`, `share_sheet`, `copy`) |
 | `package_type` | RevenueCat package type (`MONTHLY`, `ANNUAL`, …) |
 | `product_id` | Store product id (allowed, not used yet) |
 | `is_pro` | Whether the user has an active Pro subscription (also a super property) |
@@ -64,7 +66,7 @@ and cuts strings to 40 characters. In dev builds it warns once for each dropped 
 | `threshold` | A budget-alert threshold percentage (allowed, not used yet) |
 | `type` | Notification type from the push payload |
 | `enabled` | An on/off setting (budget set or cleared) |
-| `result` | Outcome label (`finished`/`skipped`, `restored`/`nothing`) |
+| `result` | Outcome label (`finished`/`skipped`, `restored`/`nothing`, `ok`/`invalid`/`error`) |
 
 ## Never collected
 
@@ -75,7 +77,7 @@ and cuts strings to 40 characters. In dev builds it warns once for each dropped 
 - Receipt images and receipt text
 - Location. The app requests no location permission. Mixpanel's IP-based geolocation is switched off with `setUseIpAddressForGeolocation(false)`, so events carry no city, region or country.
 
-There are also no bill, list or line-item ids, no route params and no free-text user input.
+There are also no bill, list or line-item ids, no invite codes, no route params and no free-text user input.
 
 ## Identity
 

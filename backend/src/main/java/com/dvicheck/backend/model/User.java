@@ -5,12 +5,17 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+// @DynamicUpdate: UPDATEs write only the changed columns. Without it every flush writes
+// every column, so a webhook (subscription_*) and a referral reward (referral_pro_until)
+// overlapping on the same user could silently overwrite each other's value (Day 37).
 @Entity
+@DynamicUpdate
 @Table(name = "users")
 @Data
 @Builder
@@ -59,6 +64,15 @@ public class User {
     @Column(name = "subscription_product_id")
     private String subscriptionProductId;
 
+    // Pro time earned through referrals (V15). Deliberately separate from
+    // subscriptionExpiresAt, which the RevenueCat webhook owns and overwrites.
+    @Column(name = "referral_pro_until")
+    private Instant referralProUntil;
+
+    // Invite code, generated lazily on first request (V15, UNIQUE)
+    @Column(name = "referral_code")
+    private String referralCode;
+
     // Comma-separated percentages (e.g. "50,75,90,100"); null = default thresholds
     @Column(name = "alert_thresholds")
     private String alertThresholds;
@@ -68,9 +82,24 @@ public class User {
     @Column(name = "pace_alerts_enabled", nullable = false)
     private boolean paceAlertsEnabled;
 
+    // THE Pro rule — the only Java implementation. Pro = an active paid subscription OR
+    // active referral time. UserRepository.findProUserIds is the one query copy; keep
+    // the two in sync.
     @Transient
     public boolean isPro() {
-        return subscriptionExpiresAt != null && subscriptionExpiresAt.isAfter(Instant.now());
+        return isProAt(Instant.now());
+    }
+
+    public boolean isProAt(Instant now) {
+        return (subscriptionExpiresAt != null && subscriptionExpiresAt.isAfter(now))
+            || (referralProUntil != null && referralProUntil.isAfter(now));
+    }
+
+    // "PAID" | "REFERRAL" | "NONE" — PAID wins when both are active. Not exposed in any DTO.
+    public String proSource(Instant now) {
+        if (subscriptionExpiresAt != null && subscriptionExpiresAt.isAfter(now)) return "PAID";
+        if (referralProUntil != null && referralProUntil.isAfter(now)) return "REFERRAL";
+        return "NONE";
     }
 
     @PrePersist

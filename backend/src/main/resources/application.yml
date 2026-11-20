@@ -81,3 +81,11 @@ app:
     enabled: true
     cron: "0 0 14 * * MON"      # Monday 14:00 UTC
     zone: UTC
+  referral:
+    # Day 37 — bound by ReferralProperties (@ConfigurationProperties). enabled=false pauses redemption.
+    enabled: true
+    referee-days: 14            # Pro days the new user gets after their first scan
+    referrer-days: 30           # Pro days the inviter gets per qualified friend
+    max-rewarded-referrals: 6   # referrer stops earning days after this many qualified friends
+    max-pro-days-ahead: 180     # referral Pro can never extend further than now + 180 days
+    redeem-window-days: 7       # a code can only be redeemed within 7 days of signup

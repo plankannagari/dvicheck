@@ -18,6 +18,7 @@ import com.dvicheck.backend.service.PantryService;
 import com.dvicheck.backend.service.ReceiptParser;
 import com.dvicheck.backend.service.SpendingTrendsService;
 import com.dvicheck.backend.service.SubscriptionService;
+import com.dvicheck.backend.service.referral.ReferralService;
 import com.dvicheck.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -60,6 +61,7 @@ BillScanController {
     private final BudgetAlertService budgetAlertService;
     private final SpendingTrendsService spendingTrendsService;
     private final SubscriptionService subscriptionService;
+    private final ReferralService referralService;
 
     @Value("${app.ai.use-gemini-analyser:false}")
     private boolean useGeminiAnalyser;
@@ -158,6 +160,10 @@ BillScanController {
         // Evict so the trends chart reflects this bill immediately instead of staying
         // stale for up to the 5-minute cache TTL.
         spendingTrendsService.evictTrendsCache(currentUserId());
+        // Referral reward (Day 37): the first scan after redeeming an invite qualifies it.
+        // Runs after the bill has committed; never throws outward. This is the only
+        // bill-creating path (offline sync replays call this same endpoint).
+        referralService.onScanSaved(currentUserId());
         return ResponseEntity.ok(ApiResponse.ok(toResponse(saved)));
     }
 

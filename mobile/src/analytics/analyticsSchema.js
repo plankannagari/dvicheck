@@ -31,6 +31,8 @@ export const EVENTS = Object.freeze({
   NOTIFICATION_OPENED: 'notification_opened',
   COACH_VIEWED: 'coach_viewed',
   PDF_REPORT_GENERATED: 'pdf_report_generated',
+  REFERRAL_SHARED: 'referral_shared',
+  REFERRAL_REDEEMED: 'referral_redeemed',
 });
 
 export const ALLOWED_PROPS = new Set([

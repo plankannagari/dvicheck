@@ -148,6 +148,14 @@ export default function PaywallScreen({ navigation, route }) {
               <Text style={styles.restoreBtnText}>Restore Purchases</Text>
             )}
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.referralLink}
+            onPress={() => navigation.navigate('Referral')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.referralLinkText}>Or earn Pro free by inviting friends</Text>
+          </TouchableOpacity>
         </ScrollView>
       )}
 
@@ -196,4 +204,6 @@ const styles = StyleSheet.create({
 
   restoreBtn: { alignItems: 'center', paddingVertical: 12 },
   restoreBtnText: { fontSize: 13, color: COLORS.inkLight, fontWeight: '600' },
+  referralLink: { alignItems: 'center', paddingVertical: 8 },
+  referralLinkText: { fontSize: 13, color: COLORS.accent, fontWeight: '600', textDecorationLine: 'underline' },
 });

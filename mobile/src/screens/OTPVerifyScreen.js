@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { verifyOtp, sendOtp } from '../api/authApi';
 import useAuthStore from '../store/authStore';
+import { consumeAndProcessPendingDeepLink } from '../utils/deepLinking';
 import { COLORS } from '../constants';
 
 const OTP_LENGTH = 6;
@@ -44,6 +45,11 @@ export default function OTPVerifyScreen({ navigation, route }) {
       const data = await verifyOtp(phone, code);
       await setAuth(data.accessToken, data.refreshToken, data.userId, phone, data.onboardingCompleted);
       navigation.replace(data.onboardingCompleted ? 'MainApp' : 'Onboarding');
+      if (data.onboardingCompleted) {
+        // Existing user: consume a link/invite tapped before login (new users go through
+        // OnboardingScreen, which consumes it). Deferred one tick, same as SplashScreen.
+        setTimeout(() => consumeAndProcessPendingDeepLink(), 0);
+      }
     } catch (err) {
       const msg = err.response?.data?.message || 'Invalid code. Please try again.';
       setError(msg);

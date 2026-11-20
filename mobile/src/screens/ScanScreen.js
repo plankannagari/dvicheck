@@ -16,6 +16,7 @@ import useHistoryStore from '../store/historyStore';
 import useNetworkStore from '../store/networkStore';
 import Toast from '../components/Toast';
 import { track, EVENTS } from '../analytics/analytics';
+import useReferralStore from '../store/referralStore';
 
 const CATEGORY_ORDER = ['ESSENTIAL', 'REDUCIBLE', 'AVOIDABLE', 'DUPLICATE'];
 
@@ -196,6 +197,10 @@ export default function ScanScreen({ navigation }) {
     try {
       const bill = await uploadReceiptImage(uri);
       track(EVENTS.SCAN_SUCCEEDED, { item_count: bill?.lineItems?.length ?? 0, duration_ms: Date.now() - startedAt });
+      // A pending invite qualifies on this scan; pick up the new Pro status without a manual refresh
+      if (useReferralStore.getState().summary?.myReferralStatus === 'PENDING') {
+        setTimeout(() => useReferralStore.getState().refreshAfterReward(), 2000);
+      }
       setScanResult(bill);
       setPhase('result');
     } catch (err) {

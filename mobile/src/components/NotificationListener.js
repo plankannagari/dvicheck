@@ -3,6 +3,7 @@ import * as Notifications from 'expo-notifications';
 
 import { navigate } from '../navigation/navigationRef';
 import { track, EVENTS } from '../analytics/analytics';
+import useReferralStore from '../store/referralStore';
 
 export default function NotificationListener() {
   useEffect(() => {
@@ -14,6 +15,10 @@ export default function NotificationListener() {
       // WEEKLY_COACH (Day 35): WeeklyCoachCard sits at the top of InsightsScreen.
       if (data && (data.type === 'BUDGET_ALERT' || data.type === 'WEEKLY_COACH')) {
         navigate('Insights');
+      } else if (data?.type === 'REFERRAL_REWARD') {
+        // Day 37: Pro days were just granted — refresh isPro + the summary, then show them
+        useReferralStore.getState().refreshAfterReward();
+        navigate('Referral');
       }
     });
     return () => responseSub.remove();

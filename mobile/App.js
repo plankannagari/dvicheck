@@ -22,6 +22,7 @@ import OTPVerifyScreen from './src/screens/OTPVerifyScreen';
 import PaywallScreen from './src/screens/PaywallScreen';
 import PhoneEntryScreen from './src/screens/PhoneEntryScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import ReferralScreen from './src/screens/ReferralScreen';
 import SplashScreen from './src/screens/SplashScreen';
 import { handleIncomingUrl, setPendingDeepLink } from './src/utils/deepLinking';
 import useAuthStore from './src/store/authStore';
@@ -97,6 +98,7 @@ export default function App() {
             <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="Insights" component={InsightsScreen} />
             <Stack.Screen name="Paywall" component={PaywallScreen} />
+            <Stack.Screen name="Referral" component={ReferralScreen} />
           </Stack.Navigator>
           <Toast />
           <NotificationListener />

@@ -12,6 +12,7 @@ import Toast from '../components/Toast';
 import BudgetAlertsCard from '../components/BudgetAlertsCard';
 import MonthlyReportPdfCard from '../components/MonthlyReportPdfCard';
 import PrivacyCard from '../components/PrivacyCard';
+import useReferralStore from '../store/referralStore';
 import { track, EVENTS } from '../analytics/analytics';
 
 const CURRENCIES = ['USD', 'AUD', 'GBP', 'EUR', 'CAD', 'INR', 'SGD'];
@@ -94,6 +95,7 @@ export default function ProfileScreen({ navigation }) {
           onPress: async () => {
             await clearAuth();
             clearProfile();
+            useReferralStore.getState().reset();
             navigation.reset({ index: 0, routes: [{ name: 'PhoneEntry' }] });
           },
         },
@@ -267,6 +269,19 @@ export default function ProfileScreen({ navigation }) {
 
           <PrivacyCard />
 
+          <View style={styles.prefsCard}>
+            <TouchableOpacity
+              style={[styles.prefRow, styles.prefRowLast]}
+              onPress={() => navigation.navigate('Referral')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.prefMeta}>
+                <Text style={styles.prefLabel}>Invite friends - get Pro free</Text>
+              </View>
+              <Text style={styles.referralChevron}>›</Text>
+            </TouchableOpacity>
+          </View>
+
           <Text style={styles.sectionLabel}>Account</Text>
           <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.8}>
             <Text style={styles.signOutBtnText}>Sign Out</Text>
@@ -361,5 +376,6 @@ const styles = StyleSheet.create({
   },
   signOutBtnText: { color: COLORS.red, fontSize: 15, fontWeight: '600' },
   deleteBtn: { alignItems: 'center', paddingVertical: 8 },
+  referralChevron: { fontSize: 22, color: COLORS.inkLight },
   deleteBtnText: { color: 'rgba(192,57,43,0.55)', fontSize: 12, fontWeight: '600' },
 });
