@@ -89,3 +89,7 @@ app:
     max-rewarded-referrals: 6   # referrer stops earning days after this many qualified friends
     max-pro-days-ahead: 180     # referral Pro can never extend further than now + 180 days
     redeem-window-days: 7       # a code can only be redeemed within 7 days of signup
+  admin:
+    # Day 38 — admin bonus Pro. Shares users.referral_pro_until with referral rewards.
+    max-grant-days: 90          # per grant action
+    max-bonus-ahead-days: 365   # bonus Pro (referral_pro_until) can never extend beyond now + 365 days

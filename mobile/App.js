@@ -28,6 +28,7 @@ import { handleIncomingUrl, setPendingDeepLink } from './src/utils/deepLinking';
 import useAuthStore from './src/store/authStore';
 import { initNetworkListener } from './src/store/networkStore';
 import { initAnalytics, track, EVENTS } from './src/analytics/analytics';
+import useForegroundRefresh from './src/hooks/useForegroundRefresh';
 
 ExpoSplashScreen.preventAutoHideAsync();
 
@@ -47,6 +48,9 @@ initAnalytics().then(() => track(EVENTS.APP_OPENED));
 const Stack = createStackNavigator();
 
 export default function App() {
+  // Silent profile/referral refresh when the app returns to the foreground (Day 38)
+  useForegroundRefresh();
+
   // Covers only the native-splash-to-JS handoff (this file rendering at all).
   // SplashScreen.js's own auth-check/onboarding routing is unrelated and untouched.
   const onLayoutRootView = useCallback(async () => {

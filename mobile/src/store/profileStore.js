@@ -13,11 +13,15 @@ const useProfileStore = create((set, get) => ({
   error: null,
   budgetAlerts: null, // { isPro, thresholds, paceAlertsEnabled, allowedThresholds }
 
-  loadProfile: async () => {
-    set({ isLoading: true, error: null });
+  // options.silent (foreground refresh, Day 38): no isLoading flip, no error state, and the
+  // coach card is only reloaded if isPro actually changed (loadCoach shows a skeleton)
+  loadProfile: async (options = {}) => {
+    const silent = options.silent === true;
+    const previousIsPro = get().profile?.isPro;
+    if (!silent) set({ isLoading: true, error: null });
     try {
       const result = await fetchMe();
-      set({ profile: result, isLoading: false });
+      set(silent ? { profile: result } : { profile: result, isLoading: false });
       // Covers mount loads and PaywallScreen's post-purchase/restore refresh (both call
       // loadProfile). Backend isPro is authoritative; never throws.
       setProStatus(result?.isPro === true);
@@ -28,8 +32,11 @@ const useProfileStore = create((set, get) => ({
       get().loadBudgetAlerts();
       // Same for the weekly coach card (Day 35): unlocks/locks as soon as isPro changes.
       // Free users make no network call (loadCoach short-circuits); never throws.
-      useInsightsStore.getState().loadCoach(result?.isPro === true);
+      if (!silent || previousIsPro !== result?.isPro) {
+        useInsightsStore.getState().loadCoach(result?.isPro === true);
+      }
     } catch (error) {
+      if (silent) return; // background refresh: keep what's on screen, say nothing
       console.error('loadProfile error:', error);
       set({ error: 'Could not load your profile.', isLoading: false });
     }

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>dvicheck admin</title>
+  <!-- Empty data: icon so the browser doesn't request /favicon.ico (img-src allows data:) -->
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="admin.css">
+  <!-- No inline script or handlers anywhere (CSP script-src 'self'); everything is in admin.js -->
+  <script src="admin.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>dvicheck admin</h1>
+    <nav id="tabs" class="tabs" hidden>
+      <button type="button" class="tab" data-tab="overview">Overview</button>
+      <button type="button" class="tab" data-tab="users">Users</button>
+      <button type="button" class="tab" data-tab="audit">Audit</button>
+    </nav>
+    <button type="button" id="signout" class="link" hidden>Sign out</button>
+  </header>
+
+  <main>
+    <p id="banner" class="banner" hidden></p>
+
+    <!-- Login -->
+    <section id="view-login" class="view" hidden>
+      <div class="card narrow">
+        <h2>Sign in</h2>
+        <form id="form-phone" autocomplete="off">
+          <label for="login-phone">Phone (international format)</label>
+          <input id="login-phone" type="tel" placeholder="+15551234567" required>
+          <button type="submit">Send code</button>
+        </form>
+        <form id="form-code" autocomplete="off" hidden>
+          <label for="login-code">Code</label>
+          <input id="login-code" inputmode="numeric" maxlength="10" required>
+          <div class="row">
+            <button type="submit">Sign in</button>
+            <button type="button" id="change-phone" class="link">Use a different number</button>
+          </div>
+        </form>
+        <p id="login-msg" class="msg"></p>
+      </div>
+    </section>
+
+    <!-- Not an admin -->
+    <section id="view-denied" class="view" hidden>
+      <div class="card narrow">
+        <h2>Not available</h2>
+        <p>Not available - is this account an admin?</p>
+        <button type="button" id="denied-signout">Sign out</button>
+      </div>
+    </section>
+
+    <!-- Overview -->
+    <section id="view-overview" class="view" hidden>
+      <div class="row spread">
+        <p class="muted" id="generated-at"></p>
+        <button type="button" id="refresh">Refresh</button>
+      </div>
+      <div id="cards" class="cards"></div>
+      <div class="charts">
+        <div class="card">
+          <h3>Signups per day (UTC, last 14 days)</h3>
+          <div id="chart-signups" class="chart"></div>
+        </div>
+        <div class="card">
+          <h3>Scans per day (UTC, last 14 days)</h3>
+          <div id="chart-scans" class="chart"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Weekly coach (last 4 completed weeks)</h3>
+        <table class="table">
+          <thead><tr><th>Week</th><th>AI</th><th>Fallback</th><th>Fallback %</th></tr></thead>
+          <tbody id="coach-rows"></tbody>
+        </table>
+        <p class="muted" id="coach-latest"></p>
+      </div>
+    </section>
+
+    <!-- Users -->
+    <section id="view-users" class="view" hidden>
+      <div class="card">
+        <form id="form-lookup" class="row" autocomplete="off">
+          <label for="lookup-phone" class="inline">Phone</label>
+          <input id="lookup-phone" type="tel" placeholder="+15551234567" required>
+          <button type="submit">Lookup</button>
+        </form>
+        <p id="lookup-msg" class="msg"></p>
+      </div>
+      <div id="user-panel" class="card" hidden>
+        <dl id="user-fields" class="fields"></dl>
+        <div class="actions">
+          <form id="form-grant" class="action" autocomplete="off">
+            <h3>Grant Pro days</h3>
+            <label for="grant-days">Days (1-90)</label>
+            <input id="grant-days" type="number" min="1" max="90" step="1" required>
+            <label for="grant-reason">Reason (3-200 characters, no phone numbers)</label>
+            <input id="grant-reason" minlength="3" maxlength="200" required>
+            <button type="submit">Grant Pro days</button>
+          </form>
+          <form id="form-revoke" class="action" autocomplete="off">
+            <h3>Revoke bonus Pro</h3>
+            <p class="muted small">Clears referral and granted days. Paid subscriptions are not affected.</p>
+            <label for="revoke-reason">Reason</label>
+            <input id="revoke-reason" minlength="3" maxlength="200" required>
+            <button type="submit" class="danger">Revoke bonus Pro</button>
+          </form>
+          <div class="action">
+            <h3>Coach message</h3>
+            <p class="muted small">Regenerates last week's note. May send the user a push.</p>
+            <button type="button" id="regenerate">Regenerate coach message</button>
+          </div>
+        </div>
+        <p id="action-msg" class="msg"></p>
+      </div>
+    </section>
+
+    <!-- Audit -->
+    <section id="view-audit" class="view" hidden>
+      <div class="card">
+        <div class="row spread">
+          <h3>Last 50 admin actions</h3>
+          <button type="button" id="audit-refresh">Refresh</button>
+        </div>
+        <table class="table">
+          <thead><tr><th>Time</th><th>Action</th><th>Target</th><th>Details</th></tr></thead>
+          <tbody id="audit-rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

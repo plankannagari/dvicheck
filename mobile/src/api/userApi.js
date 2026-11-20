@@ -1,8 +1,10 @@
 import apiClient from './apiClient';
 
+// skipPaywallRedirect: also used by the silent foreground refresh (Day 38), which must
+// never navigate. /users/me doesn't 402 today; the flag makes sure it never pops the paywall.
 export const fetchMe = async () => {
   try {
-    const response = await apiClient.get('/users/me');
+    const response = await apiClient.get('/users/me', { skipPaywallRedirect: true });
     return response.data.data;
   } catch (error) {
     console.error('fetchMe error:', error);
@@ -33,7 +35,8 @@ export const completeOnboarding = async () => {
 // -> { isPro, thresholds, paceAlertsEnabled, allowedThresholds }
 export const fetchBudgetAlerts = async () => {
   try {
-    const response = await apiClient.get('/users/me/budget-alerts');
+    // GET is open to every tier, and it runs passively (chained in loadProfile)
+    const response = await apiClient.get('/users/me/budget-alerts', { skipPaywallRedirect: true });
     return response.data.data;
   } catch (error) {
     console.error('fetchBudgetAlerts error:', error);

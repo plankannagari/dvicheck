@@ -1,5 +1,6 @@
 package com.dvicheck.backend.repository;
 
+import java.util.List;
 import com.dvicheck.backend.model.Referral;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -29,4 +30,8 @@ public interface ReferralRepository extends JpaRepository<Referral, UUID> {
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("update Referral r set r.status = 'QUALIFIED', r.qualifiedAt = :now where r.id = :id and r.status = 'PENDING'")
     int markQualified(@Param("id") UUID id, @Param("now") Instant now);
+
+    // Admin overview: [status, count]
+    @Query("select r.status, count(r) from Referral r group by r.status")
+    List<Object[]> countGroupedByStatus();
 }

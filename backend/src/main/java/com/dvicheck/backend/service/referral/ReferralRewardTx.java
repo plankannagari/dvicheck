@@ -5,13 +5,13 @@ import com.dvicheck.backend.model.Referral;
 import com.dvicheck.backend.model.User;
 import com.dvicheck.backend.repository.ReferralRepository;
 import com.dvicheck.backend.repository.UserRepository;
+import com.dvicheck.backend.service.ProDays;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -82,17 +82,10 @@ public class ReferralRewardTx {
             properties.referrerDays(), properties.refereeDays()));
     }
 
-    /**
-     * New referral_pro_until: start from whichever is later (now or the current value),
-     * add the days, cap at now + maxProDaysAhead. Never shortens existing time — if
-     * current is already beyond the cap (e.g. the cap was lowered in config), it's kept.
-     */
+    // Shared with admin grants (Day 38): same algorithm, the referral cap passed in.
+    // Kept as a package-private method so ReferralRewardTxTest calls it unchanged.
     Instant extend(Instant current, int days, Instant now) {
-        Instant base = (current != null && current.isAfter(now)) ? current : now;
-        Instant candidate = base.plus(days, ChronoUnit.DAYS);
-        Instant cap = now.plus(properties.maxProDaysAhead(), ChronoUnit.DAYS);
-        Instant capped = candidate.isAfter(cap) ? cap : candidate;
-        return (current != null && current.isAfter(capped)) ? current : capped;
+        return ProDays.extend(current, days, now, properties.maxProDaysAhead());
     }
 
     private User lock(UUID id) {

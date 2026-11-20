@@ -33,6 +33,12 @@ public class SecurityConfig {
                         // Can't require a dvicheck JWT here — RevenueCat's servers don't have one.
                         // The webhook-secret check in WebhookController is what protects this instead.
                         .requestMatchers("/api/webhooks/**").permitAll()
+                        // Admin dashboard STATIC SHELL only (Day 38): these files contain no data.
+                        // Every data call goes to /api/admin/**, which is NOT listed here and stays
+                        // behind the JWT (anyRequest().authenticated()) plus AdminGuard's 404.
+                        .requestMatchers(HttpMethod.GET,
+                                "/admin", "/admin/", "/admin/index.html", "/admin/admin.js", "/admin/admin.css")
+                        .permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {

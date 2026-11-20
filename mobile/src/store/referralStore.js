@@ -10,13 +10,17 @@ const useReferralStore = create((set, get) => ({
   status: 'idle', // 'idle' | 'loading' | 'ready' | 'error'
   error: null,
 
-  load: async () => {
+  // options.silent (foreground refresh, Day 38): no 'loading' status (that drives the
+  // pull-to-refresh spinner) and failures leave the current summary untouched
+  load: async (options = {}) => {
+    const silent = options.silent === true;
     // A refresh keeps the current summary on screen; only the first load shows a skeleton
-    set({ status: 'loading', error: null });
+    if (!silent) set({ status: 'loading', error: null });
     try {
       const summary = await fetchReferralSummary();
       set({ summary, status: 'ready' });
     } catch (error) {
+      if (silent) return;
       console.warn('referral load failed:', error?.appError?.message || error);
       set({ status: 'error', error: error.appError?.message || 'Something went wrong.' });
     }

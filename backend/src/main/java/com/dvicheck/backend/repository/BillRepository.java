@@ -70,4 +70,23 @@ public interface BillRepository extends JpaRepository<Bill, UUID> {
         "GROUP BY week_start", nativeQuery = true)
     List<Object[]> sumTotalsGroupedByWeek(@Param("userId") UUID userId,
                                            @Param("earliestWeekStart") LocalDate earliestWeekStart);
+
+    // ---- Admin overview (Day 38). Scan time = created_at, not the editable purchase_date ----
+
+    @Query("SELECT COUNT(DISTINCT b.user.id) FROM Bill b WHERE b.createdAt >= :since")
+    long countDistinctScannersSince(@Param("since") Instant since);
+
+    @Query("SELECT COUNT(b) FROM Bill b WHERE b.createdAt >= :since")
+    long countScansSince(@Param("since") Instant since);
+
+    // [date, count] per UTC day — same UTC-wall-clock reasoning as UserRepository.countSignupsPerDay
+    @Query(value = "SELECT CAST(created_at AS date) AS day, COUNT(*) FROM bills "
+                 + "WHERE created_at >= :since GROUP BY 1", nativeQuery = true)
+    List<Object[]> countScansPerDay(@Param("since") java.time.LocalDateTime since);
+
+    // Admin user lookup (Day 38): a count and a timestamp only — never the bills themselves
+    long countByUserId(UUID userId);
+
+    @Query("SELECT MAX(b.createdAt) FROM Bill b WHERE b.user.id = :userId")
+    Instant findLastScanAt(@Param("userId") UUID userId);
 }

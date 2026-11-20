@@ -1,10 +1,12 @@
 package com.dvicheck.backend.model;
 
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
@@ -82,9 +84,15 @@ public class User {
     @Column(name = "pace_alerts_enabled", nullable = false)
     private boolean paceAlertsEnabled;
 
+    // Admin dashboard access (V16). Set by SQL only — no API, DTO or service may change it,
+    // so no setter is generated (the builder exists for tests). Lombok getter: isAdmin().
+    @Column(name = "is_admin", nullable = false)
+    @Setter(AccessLevel.NONE)
+    private boolean admin;
+
     // THE Pro rule — the only Java implementation. Pro = an active paid subscription OR
-    // active referral time. UserRepository.findProUserIds is the one query copy; keep
-    // the two in sync.
+    // active referral time. PRO RULE: keep in sync with UserRepository.findProUserIds,
+    // countPaid and countBonusOnly. Four copies - change all or none.
     @Transient
     public boolean isPro() {
         return isProAt(Instant.now());

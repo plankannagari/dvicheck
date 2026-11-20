@@ -19,6 +19,12 @@ public class CacheConfig {
         cacheManager.setCaffeine(Caffeine.newBuilder()
             .expireAfterWrite(5, TimeUnit.MINUTES)
             .maximumSize(1000));
+        // Admin overview (Day 38): its own 60-second TTL, one entry (constant key). Registered
+        // separately because setCaffeine() above is a single spec shared by named caches.
+        cacheManager.registerCustomCache("adminOverview", Caffeine.newBuilder()
+            .expireAfterWrite(60, TimeUnit.SECONDS)
+            .maximumSize(1)
+            .build());
         return cacheManager;
     }
 }
